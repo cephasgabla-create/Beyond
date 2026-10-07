@@ -1,62 +1,234 @@
 const profileName = document.getElementById("profileName");
-const profileEmail = document.getElementById("profileEmail");
+const profileUsername = document.getElementById("profileUsername");
+const profileBio = document.getElementById("profileBio");
 const videoCount = document.getElementById("videoCount");
+const followerCount = document.getElementById("followerCount");
+const followingCount = document.getElementById("followingCount");
 const avatar = document.getElementById("avatar");
 const myVideos = document.getElementById("myVideos");
 const logoutBtn = document.getElementById("logoutBtn");
+const usernameInput = document.getElementById("usernameInput");
+const displayNameInput = document.getElementById("displayNameInput");
+const bioInput = document.getElementById("bioInput");
+const saveBtn = document.getElementById("saveProfileBtn");
+const status = document.getElementById("profileStatus");
+const followBtn = document.getElementById("followBtn");
+const editSection = document.getElementById("editSection");
+
+let currentUser = null;
+let profileUserId = null;
 
 (async () => {
-  const user = await BeyondAuth.requireAuth("login.html");
-  if (!user) return;
+  currentUser = await BeyondAuth.getCurrentUser();
 
-  const email = user.email || "Beyond User";
-  profileName.textContent = email.split("@")[0];
-  profileEmail.textContent = email;
-  avatar.textContent = email.charAt(0).toUpperCase();
+  const requestedUser = new URLSearchParams(window.location.search).get("user");
 
+  if (requestedUser) {
+    profileUserId = requestedUser;
+  } else {
+    if (!currentUser) {
+      window.location.href = "login.html?next=profile.html";
+      return;
+    }
+    profileUserId = currentUser.id;
+  }
+
+  await loadProfile();
+
+  if (profileUserId === currentUser?.id) {
+    editSection.hidden = false;
+    followBtn.hidden = true;
+  } else {
+    editSection.hidden = true;
+    followBtn.hidden = false;
+    await loadFollowState();
+  }
+
+  await loadVideos();
+})();
+
+async function loadProfile() {
+  const { data: profile, error } = await supabaseClient
+    .from("profiles")
+    .select("id, username, display_name, bio, avatar_url")
+    .eq("id", profileUserId)
+    .maybeSingle();
+
+  if (error) {
+    console.error(error);
+    status.textContent = "Could not load profile.";
+    return;
+  }
+
+  if (!profile) {
+    status.textContent = "Profile not found. Run creator-profile.sql in Supabase.";
+    return;
+  }
+
+  fillProfile(profile);
+
+  const [{ count: followers }, { count: following }] = await Promise.all([
+    supabaseClient.from("follows").select("*", { count: "exact", head: true }).eq("following_id", profileUserId),
+    supabaseClient.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", profileUserId)
+  ]);
+
+  followerCount.textContent = followers || 0;
+  followingCount.textContent = following || 0;
+}
+
+function fillProfile(profile) {
+  profileName.textContent = profile.display_name;
+  profileUsername.textContent = "@" + profile.username;
+  profileBio.textContent = profile.bio || "";
+
+  if (profileUserId === currentUser?.id) {
+    usernameInput.value = profile.username;
+    displayNameInput.value = profile.display_name;
+    bioInput.value = profile.bio || "";
+  }
+
+  if (profile.avatar_url) {
+    avatar.innerHTML = `<img src="${escapeHTML(profile.avatar_url)}" alt="Profile photo">`;
+  } else {
+    avatar.textContent = profile.display_name.charAt(0).toUpperCase();
+  }
+}
+
+async function loadFollowState() {
+  if (!currentUser) {
+    followBtn.textContent = "Log in to follow";
+    followBtn.onclick = () => {
+      window.location.href = "login.html?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+    };
+    return;
+  }
+
+  const { data } = await supabaseClient
+    .from("follows")
+    .select("follower_id")
+    .eq("follower_id", currentUser.id)
+    .eq("following_id", profileUserId)
+    .maybeSingle();
+
+  followBtn.textContent = data ? "Following" : "Follow";
+  followBtn.classList.toggle("following", !!data);
+
+  followBtn.onclick = async () => {
+    followBtn.disabled = true;
+
+    if (data) {
+      const { error } = await supabaseClient
+        .from("follows")
+        .delete()
+        .eq("follower_id", currentUser.id)
+        .eq("following_id", profileUserId);
+
+      if (!error) {
+        followBtn.textContent = "Follow";
+        followBtn.classList.remove("following");
+        await loadProfile();
+      }
+    } else {
+      const { error } = await supabaseClient
+        .from("follows")
+        .insert({
+          follower_id: currentUser.id,
+          following_id: profileUserId
+        });
+
+      if (!error) {
+        followBtn.textContent = "Following";
+        followBtn.classList.add("following");
+        await loadProfile();
+      }
+    }
+
+    followBtn.disabled = false;
+    await loadFollowState();
+  };
+}
+
+async function loadVideos() {
   const { data, error } = await supabaseClient
     .from("videos")
     .select("id, video_url, caption, created_at")
-    .eq("user_id", user.id)
+    .eq("user_id", profileUserId)
     .order("created_at", { ascending: false });
 
   if (error) {
     console.error(error);
-    myVideos.innerHTML = '<p class="muted">Could not load your videos.</p>';
+    myVideos.innerHTML = '<p class="muted">Could not load videos.</p>';
     return;
   }
 
-  videoCount.textContent = `${data.length} video${data.length === 1 ? "" : "s"}`;
+  videoCount.textContent = data.length;
 
   if (!data.length) {
-    myVideos.innerHTML = '<p class="muted">You have not uploaded a video yet.</p>';
+    myVideos.innerHTML = '<p class="muted">No videos yet.</p>';
     return;
   }
 
   myVideos.replaceChildren();
+
   data.forEach(video => {
     const card = document.createElement("article");
     card.className = "profile-video";
     card.innerHTML = `
-      <video src="${video.video_url}" controls playsinline preload="metadata"></video>
+      <video src="${escapeHTML(video.video_url)}" controls playsinline preload="metadata"></video>
       <p>${escapeHTML(video.caption || "")}</p>
     `;
     myVideos.appendChild(card);
   });
-})();
+}
+
+saveBtn.addEventListener("click", async () => {
+  if (!currentUser || profileUserId !== currentUser.id) return;
+
+  const username = usernameInput.value.trim().toLowerCase();
+  const displayName = displayNameInput.value.trim();
+  const bio = bioInput.value.trim();
+
+  if (!/^[a-z0-9_]{3,30}$/.test(username)) {
+    status.textContent = "Username: 3–30 letters, numbers, or underscores.";
+    return;
+  }
+
+  if (!displayName) {
+    status.textContent = "Enter a display name.";
+    return;
+  }
+
+  saveBtn.disabled = true;
+  status.textContent = "Saving...";
+
+  const { error } = await supabaseClient
+    .from("profiles")
+    .upsert({
+      id: currentUser.id,
+      username,
+      display_name: displayName,
+      bio
+    }, { onConflict: "id" });
+
+  if (error) {
+    status.textContent = error.message.includes("profiles_username_key")
+      ? "That username is already taken."
+      : error.message;
+    saveBtn.disabled = false;
+    return;
+  }
+
+  status.textContent = "Profile saved!";
+  await loadProfile();
+  saveBtn.disabled = false;
+});
+
+logoutBtn.addEventListener("click", async () => {
+  await BeyondAuth.logoutBeyond();
+});
 
 function escapeHTML(value = "") {
   const div = document.createElement("div");
   div.textContent = value;
   return div.innerHTML;
 }
-
-logoutBtn.addEventListener("click", async () => {
-  logoutBtn.disabled = true;
-  try {
-    await BeyondAuth.logoutBeyond();
-  } catch (error) {
-    console.error(error);
-    logoutBtn.disabled = false;
-  }
-});
