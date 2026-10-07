@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile • Beyond</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Beyond</a>
+    <div>
+      <a class="upload-link" href="upload.html">＋ Upload</a>
+      <button id="logoutBtn" class="upload-link" type="button">Log out</button>
+    </div>
+  </header>
+
+  <main class="profile-page">
+    <section class="profile-header">
+      <div id="avatar" class="avatar">B</div>
+      <div>
+        <h1 id="profileName">Beyond User</h1>
+        <p id="profileEmail" class="muted"></p>
+        <p id="videoCount" class="muted">0 videos</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>My videos</h2>
+      <div id="myVideos" class="profile-grid">
+        <p class="muted">Loading videos...</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <script src="profile.js"></script>
+</body>
+</html>
