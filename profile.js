@@ -265,22 +265,35 @@ function escapeHTML(value = "") {
   return div.innerHTML;
 }
 
-async function loadCreatorStudio(){
-  if(!profileUserId) return;
-  const [{data:videos},{data:likes},{data:comments},{data:views},{count:followers}]=await Promise.all([
-    supabaseClient.from("videos").select("id,created_at").eq("user_id",profileUserId),
-    supabaseClient.from("video_likes").select("video_id").in("video_id",(await supabaseClient.from("videos").select("id").eq("user_id",profileUserId))).then(r=>r.data?{data:r.data}:{data:[]}),
-    supabaseClient.from("video_comments").select("video_id,created_at").in("video_id",(await supabaseClient.from("videos").select("id").eq("user_id",profileUserId))).then(r=>r.data?{data:r.data}:{data:[]}),
-    supabaseClient.from("video_views").select("video_id,viewed_at").in("video_id",(await supabaseClient.from("videos").select("id").eq("user_id",profileUserId))).then(r=>r.data?{data:r.data}:{data:[]}),
+async function loadCreatorStudio(days=7){
+  if(!profileUserId)return;
+  const {data:videos=[]}=await supabaseClient.from("videos").select("id,caption,video_url,created_at").eq("user_id",profileUserId).order("created_at",{ascending:false});
+  const ids=videos.map(v=>v.id);
+  const [{data:likes=[]},{data:comments=[]},{data:views=[]},{count:followers}]=await Promise.all([
+    ids.length?supabaseClient.from("video_likes").select("video_id"):Promise.resolve({data:[]}),
+    ids.length?supabaseClient.from("video_comments").select("video_id,created_at"):Promise.resolve({data:[]}),
+    ids.length?supabaseClient.from("video_views").select("video_id,viewed_at"):Promise.resolve({data:[]}),
     supabaseClient.from("follows").select("*",{count:"exact",head:true}).eq("following_id",profileUserId)
   ]);
-  const vs=videos||[], ids=new Set(vs.map(v=>v.id));
-  const lk=(likes||[]).filter(x=>ids.has(x.video_id)).length;
-  const cm=(comments||[]).filter(x=>ids.has(x.video_id)).length;
-  const vw=(views||[]).filter(x=>ids.has(x.video_id)).length;
-  studioViews.textContent=vw; studioLikes.textContent=lk; studioComments.textContent=cm; studioFollowers.textContent=followers||0;
-  const days=[];
-  for(let i=6;i>=0;i--){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);days.push(d)}
-  const data=days.map(d=>{const next=new Date(d);next.setDate(next.getDate()+1);return {label:d.toLocaleDateString(undefined,{weekday:"short"}),views:(views||[]).filter(v=>ids.has(v.video_id)&&new Date(v.viewed_at)>=d&&new Date(v.viewed_at)<next).length,likes:(likes||[]).filter(v=>ids.has(v.video_id)).length}});
-  performanceChart.innerHTML=data.map(x=>'<div class="chart-row"><span>'+x.label+'</span><div class="chart-track"><i style="width:'+Math.min(100,(x.views/Math.max(1,...data.map(y=>y.views)))*100)+'%"></i></div><b>'+x.views+'</b></div>').join("");
+  const idSet=new Set(ids);
+  const myLikes=likes.filter(x=>idSet.has(x.video_id));
+  const myComments=comments.filter(x=>idSet.has(x.video_id));
+  const myViews=views.filter(x=>idSet.has(x.video_id));
+  studioViews.textContent=myViews.length;studioLikes.textContent=myLikes.length;studioComments.textContent=myComments.length;studioFollowers.textContent=followers||0;
+
+  const daysData=[];
+  for(let i=days-1;i>=0;i--){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);const next=new Date(d);next.setDate(next.getDate()+1);daysData.push({label:days<=7?d.toLocaleDateString(undefined,{weekday:"short"}):d.toLocaleDateString(undefined,{month:"short",day:"numeric"}),views:myViews.filter(v=>new Date(v.viewed_at)>=d&&new Date(v.viewed_at)<next).length,comments:myComments.filter(v=>new Date(v.created_at)>=d&&new Date(v.created_at)<next).length});}
+  const max=Math.max(1,...daysData.map(x=>x.views));
+  performanceChart.innerHTML=daysData.map(x=>'<div class="chart-row"><span>'+x.label+'</span><div class="chart-track"><i style="width:'+Math.min(100,x.views/max*100)+'%"></i></div><b>'+x.views+'</b></div>').join("");
+
+  const top=videos.map(v=>({v,score:myLikes.filter(x=>x.video_id===v.id).length*3+myComments.filter(x=>x.video_id===v.id).length*4+myViews.filter(x=>x.video_id===v.id).length})).sort((a,b)=>b.score-a.score).slice(0,5);
+  const topVideos=document.getElementById("topVideos");
+  if(topVideos) topVideos.innerHTML='<h3>Top videos</h3>'+ (top.length?top.map(x=>'<a class="top-video" href="index.html#video-'+encodeURIComponent(x.v.id)+'"><video src="'+escapeHTML(x.v.video_url)+'" muted playsinline preload="metadata"></video><div><strong>'+escapeHTML(x.v.caption||"Beyond video")+'</strong><span>Score '+x.score+' · '+myViews.filter(v=>v.video_id===x.v.id).length+' views · '+myLikes.filter(v=>v.video_id===x.v.id).length+' likes</span></div></a>').join(""):'<p class="muted">No video analytics yet.</p>');
 }
+
+
+document.querySelectorAll(".range-btn").forEach(btn=>btn.addEventListener("click",()=>{
+  document.querySelectorAll(".range-btn").forEach(x=>x.classList.remove("active"));
+  btn.classList.add("active");
+  loadCreatorStudio(Number(btn.dataset.days));
+}));
