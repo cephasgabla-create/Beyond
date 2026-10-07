@@ -29,13 +29,11 @@ const logoutBtn = document.getElementById("logoutBtn");
   videoCount.textContent = `${data.length} video${data.length === 1 ? "" : "s"}`;
 
   if (!data.length) {
-    myVideos.innerHTML =
-      '<p class="muted">You have not uploaded a video yet.</p>';
+    myVideos.innerHTML = '<p class="muted">You have not uploaded a video yet.</p>';
     return;
   }
 
   myVideos.replaceChildren();
-
   data.forEach(video => {
     const card = document.createElement("article");
     card.className = "profile-video";
