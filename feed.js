@@ -1,4 +1,12 @@
 const feed = document.getElementById("feed");
+const commentsOverlay = document.getElementById("commentsOverlay");
+const closeCommentsBtn = document.getElementById("closeCommentsBtn");
+const commentsList = document.getElementById("commentsList");
+const commentsCount = document.getElementById("commentsCount");
+const commentForm = document.getElementById("commentForm");
+const commentInput = document.getElementById("commentInput");
+let activeCommentVideoId = null;
+let commentsChannel = null;
 
 function escapeHTML(value = "") {
   const div = document.createElement("div");
@@ -124,21 +132,8 @@ async function loadBeyondFeed() {
       loadBeyondFeed();
     });
 
-    card.querySelector(".comment-btn").addEventListener("click", async () => {
-      const current = await BeyondAuth.getCurrentUser();
-      if (!current) {
-        window.location.href = "login.html?next=index.html";
-        return;
-      }
+    card.querySelector(".comment-btn").addEventListener("click", () => openComments(video.id));
 
-      const text = prompt("Write a comment:");
-      if (!text?.trim()) return;
-
-      await supabaseClient.from("video_comments").insert({
-        video_id: video.id,
-        user_id: current.id,
-        comment: text.trim().slice(0, 500)
-      });
 
       loadBeyondFeed();
     });
@@ -195,5 +190,94 @@ function setupVerticalFeed() {
 
   cards.forEach(card => observer.observe(card));
 }
+
+
+async function openComments(videoId) {
+  activeCommentVideoId = videoId;
+  commentsOverlay.hidden = false;
+  document.body.classList.add("comments-open");
+  await loadComments(videoId);
+  subscribeToComments(videoId);
+  setTimeout(() => commentInput.focus(), 50);
+}
+
+function closeComments() {
+  commentsOverlay.hidden = true;
+  document.body.classList.remove("comments-open");
+  activeCommentVideoId = null;
+  if (commentsChannel) {
+    supabaseClient.removeChannel(commentsChannel);
+    commentsChannel = null;
+  }
+}
+
+async function loadComments(videoId) {
+  commentsList.innerHTML = '<p class="comments-empty">Loading comments...</p>';
+  const { data, error } = await supabaseClient
+    .from("video_comments")
+    .select("id, video_id, user_id, comment, created_at")
+    .eq("video_id", videoId)
+    .order("created_at", { ascending: true });
+  if (error) {
+    console.error(error);
+    commentsList.innerHTML = '<p class="comments-empty">Could not load comments.</p>';
+    return;
+  }
+  const comments = data || [];
+  const ids = [...new Set(comments.map(c => c.user_id).filter(Boolean))];
+  const { data: profiles } = ids.length
+    ? await supabaseClient.from("profiles").select("id, username, display_name, avatar_url").in("id", ids)
+    : { data: [] };
+  commentsCount.textContent = `${comments.length} comment${comments.length === 1 ? "" : "s"}`;
+  commentsList.replaceChildren();
+  if (!comments.length) {
+    commentsList.innerHTML = '<p class="comments-empty">Be the first to comment.</p>';
+    return;
+  }
+  comments.forEach(c => {
+    const p = profiles?.find(x => x.id === c.user_id);
+    const item = document.createElement("article");
+    item.className = "comment-item";
+    const avatar = p?.avatar_url
+      ? `<img src="${escapeHTML(p.avatar_url)}" alt="">`
+      : `<span>${escapeHTML((p?.display_name || "B").charAt(0).toUpperCase())}</span>`;
+    item.innerHTML = `<div class="comment-avatar">${avatar}</div><div class="comment-body"><strong>@${escapeHTML(p?.username || "beyond_user")}</strong><p>${escapeHTML(c.comment)}</p></div>`;
+    commentsList.appendChild(item);
+  });
+  commentsList.scrollTop = commentsList.scrollHeight;
+}
+
+function subscribeToComments(videoId) {
+  if (commentsChannel) supabaseClient.removeChannel(commentsChannel);
+  commentsChannel = supabaseClient.channel("comments-" + videoId)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "video_comments", filter: "video_id=eq." + videoId }, () => {
+      if (activeCommentVideoId === videoId) loadComments(videoId);
+    })
+    .subscribe();
+}
+
+commentForm?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const text = commentInput.value.trim();
+  if (!text || !activeCommentVideoId) return;
+  const user = await BeyondAuth.getCurrentUser();
+  if (!user) {
+    window.location.href = "login.html?next=index.html";
+    return;
+  }
+  commentInput.disabled = true;
+  const { error } = await supabaseClient.from("video_comments").insert({
+    video_id: activeCommentVideoId,
+    user_id: user.id,
+    comment: text.slice(0, 500)
+  });
+  commentInput.disabled = false;
+  if (error) console.error(error);
+  else commentInput.value = "";
+});
+
+closeCommentsBtn?.addEventListener("click", closeComments);
+commentsOverlay?.addEventListener("click", e => { if (e.target === commentsOverlay) closeComments(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !commentsOverlay.hidden) closeComments(); });
 
 loadBeyondFeed();
