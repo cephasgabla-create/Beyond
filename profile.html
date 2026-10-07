@@ -9,24 +9,44 @@
 <body>
   <header class="topbar">
     <a class="brand" href="index.html">Beyond</a>
-    <div>
+    <nav class="nav-actions">
+      <a class="nav-link" href="index.html">Home</a>
       <a class="upload-link" href="upload.html">＋ Upload</a>
-      <button id="logoutBtn" class="upload-link" type="button">Log out</button>
-    </div>
+      <button id="logoutBtn" class="nav-link" type="button">Log out</button>
+    </nav>
   </header>
 
   <main class="profile-page">
     <section class="profile-header">
       <div id="avatar" class="avatar">B</div>
-      <div>
-        <h1 id="profileName">Beyond User</h1>
-        <p id="profileEmail" class="muted"></p>
-        <p id="videoCount" class="muted">0 videos</p>
+      <div class="profile-main">
+        <h1 id="profileName">Beyond Creator</h1>
+        <p id="profileUsername" class="muted">@beyond</p>
+        <p id="profileBio">Welcome to Beyond.</p>
+
+        <div class="profile-stats">
+          <span><strong id="videoCount">0</strong> Videos</span>
+          <span><strong id="followerCount">0</strong> Followers</span>
+          <span><strong id="followingCount">0</strong> Following</span>
+        </div>
+
+        <button id="followBtn" class="follow-btn" type="button" hidden>Follow</button>
+      </div>
+    </section>
+
+    <section id="editSection" class="profile-edit">
+      <h2>Edit profile</h2>
+      <div class="profile-form">
+        <input id="usernameInput" maxlength="30" placeholder="Username">
+        <input id="displayNameInput" maxlength="50" placeholder="Display name">
+        <textarea id="bioInput" maxlength="150" placeholder="Bio"></textarea>
+        <button id="saveProfileBtn" class="primary" type="button">Save profile</button>
+        <p id="profileStatus" class="status" aria-live="polite"></p>
       </div>
     </section>
 
     <section>
-      <h2>My videos</h2>
+      <h2>Videos</h2>
       <div id="myVideos" class="profile-grid">
         <p class="muted">Loading videos...</p>
       </div>
