@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discover • Beyond</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="discover-body">
+<header class="topbar">
+  <a class="brand" href="index.html">Beyond</a>
+  <nav class="nav-actions">
+    <a class="nav-link" href="index.html">Home</a>
+    <a class="nav-link" href="search.html">Search</a>
+    <a class="upload-link" href="upload.html">＋ Upload</a>
+  </nav>
+</header>
+<main class="discover-page">
+  <section class="discover-hero">
+    <h1>Discover</h1>
+    <p>Find what's trending across Beyond.</p>
+  </section>
+  <section><h2>🔥 Trending Hashtags</h2><div id="hashtags" class="hashtag-list"></div></section>
+  <section><h2>⭐ Trending Creators</h2><div id="creators" class="discover-creators"></div></section>
+  <section><h2>🎥 Popular Videos</h2><div id="trendingVideos" class="trending-grid"></div></section>
+  <p id="discoverStatus" class="status"></p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script src="discover.js"></script>
+</body>
+</html>
