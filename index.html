@@ -6,6 +6,7 @@
 <a class="brand" href="index.html">Beyond</a>
 <nav class="nav-actions" aria-label="Beyond navigation">
 <button id="openSearchBtn" class="nav-link search-link" type="button">🔍 Search</button>
+      <button id="notificationsBtn" class="nav-link notifications-link" type="button">🔔 <span id="notificationBadge" class="notification-badge" hidden>0</span></button>
 <a class="nav-link" href="profile.html">Profile</a>
 <a class="upload-link" href="upload.html">＋ Upload</a>
 </nav>
@@ -24,4 +25,11 @@
 <p id="homeSearchStatus" class="status"></p><div id="homeSearchResults" class="creator-results"></div>
 </div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase.js"></script><script src="auth.js"></script><script src="feed.js"></script><script src="home-search.js"></script>
+<div id="notificationsPanel" class="notifications-panel" hidden>
+  <div class="notifications-card">
+    <header class="notifications-header"><h2>Notifications</h2><button id="closeNotificationsBtn" class="close-search" type="button">×</button></header>
+    <div id="notificationsList" class="notifications-list"></div>
+  </div>
+</div>
+<script src="notifications.js"></script>
 </body></html>
