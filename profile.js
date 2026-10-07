@@ -24,6 +24,7 @@ const performanceChart = document.getElementById("performanceChart");
 let currentUser = null;
 let profileUserId = null;
 let currentAvatarUrl = null;
+let studioRealtimeChannel = null;
 
 (async () => {
   currentUser = await BeyondAuth.getCurrentUser();
@@ -52,6 +53,7 @@ let currentAvatarUrl = null;
 
   await loadVideos();
   await loadCreatorStudio();
+  subscribeToStudioAnalytics();
 })();
 
 async function loadProfile() {
@@ -297,3 +299,15 @@ document.querySelectorAll(".range-btn").forEach(btn=>btn.addEventListener("click
   btn.classList.add("active");
   loadCreatorStudio(Number(btn.dataset.days));
 }));
+
+function subscribeToStudioAnalytics(){
+  if(studioRealtimeChannel) supabaseClient.removeChannel(studioRealtimeChannel);
+  studioRealtimeChannel=supabaseClient
+    .channel("creator-studio-"+profileUserId)
+    .on("postgres_changes",{event:"*",schema:"public",table:"video_views"},()=>loadCreatorStudio(document.querySelector(".range-btn.active")?.dataset.days||7))
+    .on("postgres_changes",{event:"*",schema:"public",table:"video_likes"},()=>loadCreatorStudio(document.querySelector(".range-btn.active")?.dataset.days||7))
+    .on("postgres_changes",{event:"*",schema:"public",table:"video_comments"},()=>loadCreatorStudio(document.querySelector(".range-btn.active")?.dataset.days||7))
+    .on("postgres_changes",{event:"*",schema:"public",table:"follows"},()=>loadCreatorStudio(document.querySelector(".range-btn.active")?.dataset.days||7))
+    .subscribe();
+}
+window.addEventListener("beforeunload",()=>{if(studioRealtimeChannel)supabaseClient.removeChannel(studioRealtimeChannel)});
