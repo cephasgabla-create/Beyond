@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign up • Beyond</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page">
+    <section class="panel">
+      <a class="brand" href="index.html">Beyond</a>
+      <h1>Create your Beyond account</h1>
+      <p class="muted">Join Beyond and start sharing.</p>
+
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="email" required>
+
+      <label for="password">Password</label>
+      <input id="password" type="password" minlength="6" autocomplete="new-password" required>
+
+      <button id="signupBtn" class="primary">Create account</button>
+      <p id="authStatus" class="status" aria-live="polite"></p>
+
+      <p class="muted">Already have an account? <a href="login.html">Log in</a></p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="signup.js"></script>
+</body>
+</html>
