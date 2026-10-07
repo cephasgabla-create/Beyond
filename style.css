@@ -94,3 +94,49 @@
   .avatar { width: 70px; height: 70px; font-size: 25px; }
   .profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+.search-section-title {
+  margin: 24px 0 10px;
+  font-size: 15px;
+  color: #aaaab4;
+}
+
+.search-video-card {
+  overflow: hidden;
+  border: 1px solid #24242d;
+  border-radius: 14px;
+  background: #111116;
+}
+
+.search-video-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-video-card video {
+  width: 76px;
+  height: 108px;
+  object-fit: cover;
+  background: #000;
+  flex-shrink: 0;
+}
+
+.search-video-info {
+  display: grid;
+  gap: 6px;
+  padding-right: 12px;
+  min-width: 0;
+}
+
+.search-video-info strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-video-info span {
+  color: #aaaab4;
+  font-size: 14px;
+}
