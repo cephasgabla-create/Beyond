@@ -19,7 +19,7 @@ function escapeHTML(value = "") {
   return div.innerHTML;
 }
 
-async function loadBeyondFeed(feedType = activeFeed) {
+async function recordInteraction(videoId, type) {\n  const user = await BeyondAuth.getCurrentUser();\n  if (!user) return;\n  await supabaseClient.from("video_interactions").insert({ user_id:user.id, video_id:videoId, interaction_type:type });\n}\n\nasync function loadBeyondFeed(feedType = activeFeed) {
   activeFeed = feedType;
   updateFeedTabs();
   feed.innerHTML = '<p class="feed-loading">Loading Beyond...</p>';
@@ -336,7 +336,7 @@ commentForm?.addEventListener("submit", async event => {
   commentInput.disabled = false;
 
   if (error) console.error(error);
-  else commentInput.value = "";
+  else {\n    await recordInteraction(activeCommentVideoId, "comment");\n    commentInput.value = "";\n  }
 });
 
 closeCommentsBtn?.addEventListener("click", closeComments);
