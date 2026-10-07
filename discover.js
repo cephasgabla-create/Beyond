@@ -2,8 +2,13 @@ const hashtagsEl=document.getElementById("hashtags");
 const creatorsEl=document.getElementById("creators");
 const videosEl=document.getElementById("trendingVideos");
 const statusEl=document.getElementById("discoverStatus");
+let discoverChannel=null;
+let refreshTimer=null;
+let discoverLoading=false;
 
 async function loadDiscover(){
+  if(discoverLoading)return;
+  discoverLoading=true;
   statusEl.textContent="Loading trends...";
   const {data:videos,error}=await supabaseClient.from("videos").select("id,user_id,video_url,caption,created_at").order("created_at",{ascending:false}).limit(100);
   if(error){console.error(error);statusEl.textContent="Could not load Discover.";return}
@@ -56,6 +61,33 @@ async function loadDiscover(){
   });
   if(!hashtagsEl.children.length) hashtagsEl.innerHTML='<span class="muted">Add hashtags to captions to start trending.</span>';
   statusEl.textContent="";
+  discoverLoading=false;
 }
 function escapeHTML(v=""){const d=document.createElement("div");d.textContent=v;return d.innerHTML}
+
+function scheduleDiscoverRefresh(){
+  clearTimeout(refreshTimer);
+  refreshTimer=setTimeout(()=>loadDiscover(),350);
+}
+
+function subscribeToDiscover(){
+  if(discoverChannel) supabaseClient.removeChannel(discoverChannel);
+
+  discoverChannel=supabaseClient
+    .channel("beyond-discover-live")
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"video_likes"},scheduleDiscoverRefresh)
+    .on("postgres_changes",{event:"DELETE",schema:"public",table:"video_likes"},scheduleDiscoverRefresh)
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"video_comments"},scheduleDiscoverRefresh)
+    .on("postgres_changes",{event:"DELETE",schema:"public",table:"video_comments"},scheduleDiscoverRefresh)
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"video_views"},scheduleDiscoverRefresh)
+    .subscribe((status)=>{
+      if(status==="SUBSCRIBED") statusEl.textContent="Live trends enabled";
+    });
+}
+
+window.addEventListener("beforeunload",()=>{
+  if(discoverChannel) supabaseClient.removeChannel(discoverChannel);
+});
+
 loadDiscover();
+subscribeToDiscover();
