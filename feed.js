@@ -26,11 +26,15 @@ async function loadBeyondFeed() {
   }
 
   const ids = videos.map(v => v.id);
-  const [{ data: likes }, { data: comments }, { data: views }] = await Promise.all([
-    supabaseClient.from("video_likes").select("video_id, user_id").in("video_id", ids),
-    supabaseClient.from("video_comments").select("id, video_id, user_id, comment").in("video_id", ids).order("created_at", { ascending: false }),
-    supabaseClient.from("video_views").select("video_id").in("video_id", ids)
-  ]);
+  const userIds = [...new Set(videos.map(v => v.user_id).filter(Boolean))];
+
+  const [{ data: likes }, { data: comments }, { data: views }, { data: profiles }] =
+    await Promise.all([
+      supabaseClient.from("video_likes").select("video_id, user_id").in("video_id", ids),
+      supabaseClient.from("video_comments").select("id, video_id, user_id, comment").in("video_id", ids).order("created_at", { ascending: false }),
+      supabaseClient.from("video_views").select("video_id").in("video_id", ids),
+      supabaseClient.from("profiles").select("id, username, display_name, avatar_url").in("id", userIds)
+    ]);
 
   const { data: { user } } = await supabaseClient.auth.getUser();
   feed.replaceChildren();
@@ -39,17 +43,24 @@ async function loadBeyondFeed() {
     const videoLikes = likes?.filter(x => x.video_id === video.id) || [];
     const videoComments = comments?.filter(x => x.video_id === video.id) || [];
     const videoViews = views?.filter(x => x.video_id === video.id) || [];
+    const creator = profiles?.find(p => p.id === video.user_id);
     const liked = !!user && videoLikes.some(x => x.user_id === user.id);
+
+    const username = creator?.username || "beyond_creator";
+    const displayName = creator?.display_name || "Beyond Creator";
 
     const card = document.createElement("article");
     card.className = "video-card";
+    card.id = "video-" + video.id;
 
     card.innerHTML = `
       <video class="video" src="${escapeHTML(video.video_url)}" playsinline loop preload="metadata"></video>
 
       <div class="video-overlay">
         <div class="video-meta">
-          <strong>@beyond_creator</strong>
+          <a class="creator-link" href="profile.html?user=${encodeURIComponent(video.user_id)}">
+            <strong>@${escapeHTML(username)}</strong>
+          </a>
           <p>${escapeHTML(video.caption || "")}</p>
         </div>
 
@@ -135,7 +146,7 @@ async function loadBeyondFeed() {
     card.querySelector(".share-btn").addEventListener("click", async () => {
       const shareData = {
         title: "Beyond video",
-        text: video.caption || "Watch this video on Beyond",
+        text: video.caption || `Watch @${username} on Beyond`,
         url: window.location.href.split("#")[0] + "#video-" + video.id
       };
 
@@ -153,6 +164,13 @@ async function loadBeyondFeed() {
   });
 
   setupVerticalFeed();
+
+  const hash = window.location.hash;
+  if (hash && hash.startsWith("#video-")) {
+    requestAnimationFrame(() => {
+      document.querySelector(hash)?.scrollIntoView({ behavior: "smooth" });
+    });
+  }
 }
 
 function setupVerticalFeed() {
