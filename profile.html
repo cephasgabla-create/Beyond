@@ -23,13 +23,11 @@
         <h1 id="profileName">Beyond Creator</h1>
         <p id="profileUsername" class="muted">@beyond</p>
         <p id="profileBio">Welcome to Beyond.</p>
-
         <div class="profile-stats">
           <span><strong id="videoCount">0</strong> Videos</span>
           <span><strong id="followerCount">0</strong> Followers</span>
           <span><strong id="followingCount">0</strong> Following</span>
         </div>
-
         <button id="followBtn" class="follow-btn" type="button" hidden>Follow</button>
       </div>
     </section>
@@ -37,6 +35,8 @@
     <section id="editSection" class="profile-edit">
       <h2>Edit profile</h2>
       <div class="profile-form">
+        <label class="file-label" for="avatarInput">Profile photo</label>
+        <input id="avatarInput" type="file" accept="image/png,image/jpeg,image/webp">
         <input id="usernameInput" maxlength="30" placeholder="Username">
         <input id="displayNameInput" maxlength="50" placeholder="Display name">
         <textarea id="bioInput" maxlength="150" placeholder="Bio"></textarea>
