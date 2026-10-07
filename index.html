@@ -11,6 +11,12 @@
 </nav>
 </header>
 <main id="feed" class="feed"></main>
+<div id="commentsOverlay" class="comments-overlay" hidden>
+<section class="comments-panel" aria-label="Comments">
+<header class="comments-header"><div><h2>Comments</h2><span id="commentsCount">0 comments</span></div><button id="closeCommentsBtn" class="close-search" type="button">×</button></header>
+<div id="commentsList" class="comments-list"></div>
+<form id="commentForm" class="comment-form"><input id="commentInput" maxlength="500" placeholder="Add a comment..." autocomplete="off"><button type="submit">Post</button></form>
+</section></div>
 <div id="searchOverlay" class="search-overlay" hidden>
 <div class="search-panel">
 <div class="search-panel-header"><h2>Search Beyond</h2><button id="closeSearchBtn" class="close-search" type="button">×</button></div>
