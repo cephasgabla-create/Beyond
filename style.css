@@ -1,38 +1,34 @@
-* { box-sizing: border-box; }
+.social-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
 
-body { margin: 0; font-family: Arial, sans-serif; background: #0b0b0f; color: #fff; }
-a { color: inherit; text-decoration: none; }
-button { font: inherit; }
+.social-actions button {
+  border: 1px solid #30303a;
+  border-radius: 10px;
+  padding: 8px 11px;
+  background: #17171e;
+  color: #fff;
+  cursor: pointer;
+}
 
-.topbar {
-  position: sticky; top: 0; z-index: 10;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 16px 20px; background: rgba(11,11,15,.94); border-bottom: 1px solid #24242c;
+.social-actions button:hover {
+  background: #22222b;
 }
-.brand { font-size: 25px; font-weight: 800; }
-.upload-link {
-  display: inline-block; margin-left: 8px; border: 0; border-radius: 12px;
-  padding: 11px 16px; background: #fff; color: #111; font-weight: 700; cursor: pointer;
+
+.view-count {
+  color: #aaaab4;
+  font-size: 14px;
 }
-.profile-page { width: min(100% - 32px, 1000px); margin: 0 auto; padding: 35px 0 60px; }
-.profile-header {
-  display: flex; align-items: center; gap: 20px; padding: 25px 0 35px;
-  border-bottom: 1px solid #292932; margin-bottom: 30px;
+
+.comments {
+  margin-top: 10px;
 }
-.avatar {
-  width: 90px; height: 90px; display: grid; place-items: center; border-radius: 50%;
-  background: #24242c; font-size: 38px; font-weight: 800;
-}
-.profile-header h1 { margin: 0 0 8px; }
-.muted { color: #a9a9b2; }
-.profile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.profile-video { overflow: hidden; border-radius: 14px; background: #15151b; }
-.profile-video video {
-  width: 100%; aspect-ratio: 9 / 16; display: block; object-fit: cover; background: #000;
-}
-.profile-video p { margin: 0; padding: 10px; color: #ddd; }
-@media (max-width: 650px) {
-  .profile-grid { grid-template-columns: repeat(2, 1fr); }
-  .profile-header { align-items: flex-start; }
-  .avatar { width: 70px; height: 70px; font-size: 28px; }
+
+.comment {
+  margin: 5px 0;
+  color: #d0d0d7;
+  font-size: 14px;
 }
