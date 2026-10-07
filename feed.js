@@ -181,6 +181,10 @@ async function loadBeyondFeed(feedType = activeFeed) {
             <span class="action-icon">↗</span>
             <span>Share</span>
           </button>
+          <button class="action-btn report-btn" type="button" aria-label="Report video">
+            <span class="action-icon">⚑</span>
+            <span>Report</span>
+          </button>
         </div>
       </div>
     `;
@@ -226,6 +230,8 @@ async function loadBeyondFeed(feedType = activeFeed) {
     card.querySelector(".comment-btn").addEventListener("click", () => {
       openComments(video.id);
     });
+
+    card.querySelector(".report-btn").addEventListener("click", () => window.openBeyondReport?.(video.id));
 
     card.querySelector(".share-btn").addEventListener("click", async () => {
       const shareData = {
