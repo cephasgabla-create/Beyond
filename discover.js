@@ -3,10 +3,11 @@ const creatorsEl=document.getElementById("creators");
 const videosEl=document.getElementById("trendingVideos");
 const statusEl=document.getElementById("discoverStatus");
 let discoverChannel=null;
+let activeHashtag="";
 let refreshTimer=null;
 let discoverLoading=false;
 
-async function loadDiscover(){
+async function loadDiscover(hashtag=""){\n  activeHashtag=hashtag;
   if(discoverLoading)return;
   discoverLoading=true;
   statusEl.textContent="Loading trends...";
@@ -27,7 +28,10 @@ async function loadDiscover(){
   const commentCount=id=>(comments||[]).filter(x=>x.video_id===id).length;
   const viewCount=id=>(views||[]).filter(x=>x.video_id===id).length;
 
-  const scored=(videos||[]).map(v=>({...v,score:likeCount(v.id)*4+commentCount(v.id)*5+viewCount(v.id)+Math.max(0,7-Math.floor((Date.now()-new Date(v.created_at).getTime())/86400000))*2}))
+  const filteredVideos=activeHashtag
+    ? (videos||[]).filter(v=>(v.caption||"").toLowerCase().includes(activeHashtag.toLowerCase()))
+    : (videos||[]);
+  const scored=filteredVideos.map(v=>({...v,score:likeCount(v.id)*4+commentCount(v.id)*5+viewCount(v.id)+Math.max(0,7-Math.floor((Date.now()-new Date(v.created_at).getTime())/86400000))*2}))
     .sort((a,b)=>b.score-a.score);
 
   videosEl.replaceChildren();
@@ -60,7 +64,7 @@ async function loadDiscover(){
     const el=document.createElement("span");el.className="hashtag";el.textContent=tag;hashtagsEl.appendChild(el);
   });
   if(!hashtagsEl.children.length) hashtagsEl.innerHTML='<span class="muted">Add hashtags to captions to start trending.</span>';
-  statusEl.textContent="";
+  statusEl.textContent=activeHashtag?`Showing ${activeHashtag}`:"";
   discoverLoading=false;
 }
 function escapeHTML(v=""){const d=document.createElement("div");d.textContent=v;return d.innerHTML}
