@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload • Beyond</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page">
+    <section class="panel">
+      <a class="brand" href="index.html">Beyond</a>
+      <h1>Upload a video</h1>
+      <p class="muted">Share your next Beyond moment.</p>
+
+      <label for="videoFile">Video</label>
+      <input id="videoFile" type="file" accept="video/*">
+
+      <video id="preview" class="preview" controls playsinline hidden></video>
+
+      <label for="caption">Caption</label>
+      <textarea id="caption" maxlength="150" placeholder="Write a caption..."></textarea>
+
+      <button id="uploadBtn" class="primary">Upload Video</button>
+      <p id="uploadStatus" class="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="upload.js"></script>
+</body>
+</html>
