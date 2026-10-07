@@ -180,7 +180,7 @@ body.comments-open{overflow:hidden}
 .discover-page{max-width:1100px;margin:0 auto;padding:100px 20px 50px}
 .discover-hero{margin-bottom:28px}.discover-hero h1{font-size:38px;margin:0 0 6px}.discover-hero p{color:#aaaab4;margin:0}
 .discover-page section{margin-top:28px}.discover-page h2{font-size:20px;margin:0 0 14px}
-.hashtag-list{display:flex;gap:8px;flex-wrap:wrap}.hashtag{padding:9px 13px;border-radius:999px;background:#17171e;border:1px solid #292932;font-weight:700}
+.hashtag-list{display:flex;gap:8px;flex-wrap:wrap}.hashtag{padding:9px 13px;border-radius:999px;background:#17171e;border:1px solid #292932;font-weight:700;color:#fff;cursor:pointer}.hashtag.active{background:#fff;color:#111;border-color:#fff}
 .discover-creators{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
 .discover-creator{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid #24242d;background:#111116;border-radius:14px}
 .discover-avatar{width:48px;height:48px;border-radius:50%;overflow:hidden;background:#292932;display:grid;place-items:center;font-weight:900;font-size:20px;flex-shrink:0}
