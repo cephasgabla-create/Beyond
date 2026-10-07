@@ -20,6 +20,7 @@ const studioLikes = document.getElementById("studioLikes");
 const studioComments = document.getElementById("studioComments");
 const studioFollowers = document.getElementById("studioFollowers");
 const performanceChart = document.getElementById("performanceChart");
+const contentList = document.getElementById("contentList");
 
 let currentUser = null;
 let profileUserId = null;
@@ -52,6 +53,7 @@ let studioRealtimeChannel = null;
   }
 
   await loadVideos();
+  if (profileUserId === currentUser?.id) await loadContentManager();
   await loadCreatorStudio();
   subscribeToStudioAnalytics();
 })();
@@ -311,3 +313,36 @@ function subscribeToStudioAnalytics(){
     .subscribe();
 }
 window.addEventListener("beforeunload",()=>{if(studioRealtimeChannel)supabaseClient.removeChannel(studioRealtimeChannel)});
+
+
+async function loadContentManager(){
+  if(!contentList || !currentUser || profileUserId!==currentUser.id)return;
+  const {data:videos,error}=await supabaseClient.from("videos").select("id,video_url,caption,created_at,storage_path").eq("user_id",currentUser.id).order("created_at",{ascending:false});
+  if(error){contentList.innerHTML='<p class="muted">Could not load your content.</p>';return}
+  contentList.replaceChildren();
+  if(!videos?.length){contentList.innerHTML='<p class="muted">You have not uploaded any videos yet.</p>';return}
+  videos.forEach(video=>{
+    const item=document.createElement("article");
+    item.className="content-item";
+    item.innerHTML='<video src="'+escapeHTML(video.video_url)+'" muted playsinline preload="metadata"></video><div class="content-details"><textarea class="content-caption" maxlength="150">'+escapeHTML(video.caption||"")+'</textarea><small>'+new Date(video.created_at).toLocaleString()+'</small><div class="content-actions"><button class="save-caption-btn" type="button">Save caption</button><button class="delete-video-btn" type="button">Delete video</button></div><p class="content-status status" aria-live="polite"></p></div>';
+    const caption=item.querySelector(".content-caption");
+    const statusEl=item.querySelector(".content-status");
+    item.querySelector(".save-caption-btn").addEventListener("click",async()=>{
+      statusEl.textContent="Saving...";
+      const {error}=await supabaseClient.from("videos").update({caption:caption.value.trim()}).eq("id",video.id).eq("user_id",currentUser.id);
+      statusEl.textContent=error?(error.message||"Could not save."):"Caption saved.";
+      if(!error) await loadVideos();
+    });
+    item.querySelector(".delete-video-btn").addEventListener("click",async()=>{
+      if(!confirm("Delete this video from Beyond?"))return;
+      statusEl.textContent="Deleting...";
+      if(video.storage_path) await supabaseClient.storage.from("videos").remove([video.storage_path]);
+      const {error}=await supabaseClient.from("videos").delete().eq("id",video.id).eq("user_id",currentUser.id);
+      if(error){statusEl.textContent=error.message||"Could not delete video.";return}
+      await loadContentManager();
+      await loadVideos();
+      await loadCreatorStudio();
+    });
+    contentList.appendChild(item);
+  });
+}
