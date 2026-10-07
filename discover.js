@@ -14,7 +14,7 @@ async function loadDiscover(hashtag=""){\n  activeHashtag=hashtag;
   const {data:videos,error}=await supabaseClient.from("videos").select("id,user_id,video_url,caption,created_at").order("created_at",{ascending:false}).limit(100);
   if(error){console.error(error);statusEl.textContent="Could not load Discover.";return}
 
-  const ids=(videos||[]).map(v=>v.id);
+  const ids=(videos||[]).map(v=>v.id);\n\n  const {data:currentUserData}=await supabaseClient.auth.getUser();\n  const currentUser=currentUserData?.user;\n  let preferredUsers=[];\n  if(currentUser){\n    const {data:followed}=await supabaseClient.from("follows").select("following_id").eq("follower_id",currentUser.id);\n    preferredUsers=(followed||[]).map(x=>x.following_id);\n  }
   const userIds=[...new Set((videos||[]).map(v=>v.user_id).filter(Boolean))];
 
   const [{data:likes},{data:comments},{data:views},{data:profiles}]=await Promise.all([
@@ -31,7 +31,7 @@ async function loadDiscover(hashtag=""){\n  activeHashtag=hashtag;
   const filteredVideos=activeHashtag
     ? (videos||[]).filter(v=>(v.caption||"").toLowerCase().includes(activeHashtag.toLowerCase()))
     : (videos||[]);
-  const scored=filteredVideos.map(v=>({...v,score:likeCount(v.id)*4+commentCount(v.id)*5+viewCount(v.id)+Math.max(0,7-Math.floor((Date.now()-new Date(v.created_at).getTime())/86400000))*2}))
+  const scored=filteredVideos.map(v=>({...v,score:(preferredUsers.includes(v.user_id)?12:0)+likeCount(v.id)*4+commentCount(v.id)*5+viewCount(v.id)+Math.max(0,7-Math.floor((Date.now()-new Date(v.created_at).getTime())/86400000))*2}))
     .sort((a,b)=>b.score-a.score);
 
   videosEl.replaceChildren();
