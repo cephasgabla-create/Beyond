@@ -9,9 +9,8 @@
 <body>
   <header class="topbar">
     <a class="brand" href="index.html">Beyond</a>
-
     <nav class="nav-actions" aria-label="Beyond navigation">
-      <a class="nav-link search-link" href="search.html">🔍 Search</a>
+      <button id="openSearchBtn" class="nav-link search-link" type="button">🔍 Search</button>
       <a class="nav-link" href="profile.html">Profile</a>
       <a class="upload-link" href="upload.html">＋ Upload</a>
     </nav>
@@ -19,9 +18,27 @@
 
   <main id="feed" class="feed"></main>
 
+  <div id="searchOverlay" class="search-overlay" hidden>
+    <div class="search-panel">
+      <div class="search-panel-header">
+        <h2>Search Beyond</h2>
+        <button id="closeSearchBtn" class="close-search" type="button" aria-label="Close search">×</button>
+      </div>
+
+      <form id="homeSearchForm" class="home-search-form">
+        <input id="homeSearchInput" type="search" maxlength="30" placeholder="Search creators..." autocomplete="off">
+        <button type="submit">Search</button>
+      </form>
+
+      <p id="homeSearchStatus" class="status" aria-live="polite"></p>
+      <div id="homeSearchResults" class="creator-results"></div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
   <script src="auth.js"></script>
   <script src="feed.js"></script>
+  <script src="home-search.js"></script>
 </body>
 </html>
