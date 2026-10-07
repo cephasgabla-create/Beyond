@@ -19,7 +19,52 @@ function escapeHTML(value = "") {
   return div.innerHTML;
 }
 
-async function recordInteraction(videoId, type) {\n  const user = await BeyondAuth.getCurrentUser();\n  if (!user) return;\n  await supabaseClient.from("video_interactions").insert({ user_id:user.id, video_id:videoId, interaction_type:type });\n}\n\nasync function loadBeyondFeed(feedType = activeFeed) {
+async function recordInteraction(videoId, type) {\n  const user = await BeyondAuth.getCurrentUser();\n  if (!user) return;\n  await supabaseClient.from("video_interactions").insert({ user_id:user.id, video_id:videoId, interaction_type:type });\n}\n\nasync function getForYouScores(videos, user) {
+  if (!user || !videos.length) return new Map();
+
+  const videoIds = videos.map(v => v.id);
+  const creatorIds = [...new Set(videos.map(v => v.user_id).filter(Boolean))];
+
+  const [{ data: interactions }, { data: follows }] = await Promise.all([
+    supabaseClient
+      .from("video_interactions")
+      .select("video_id, interaction_type, created_at")
+      .eq("user_id", user.id)
+      .in("video_id", videoIds)
+      .order("created_at", { ascending: false })
+      .limit(1000),
+    supabaseClient
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", user.id)
+  ]);
+
+  const followed = new Set((follows || []).map(x => x.following_id));
+  const scores = new Map();
+
+  videos.forEach(video => {
+    let score = 0;
+    const ageHours = Math.max(0, (Date.now() - new Date(video.created_at).getTime()) / 3600000);
+
+    // Fresh content gets a moderate boost without overwhelming engagement.
+    score += Math.max(0, 24 - ageHours) * 0.8;
+
+    if (followed.has(video.user_id)) score += 35;
+
+    const own = (interactions || []).filter(x => x.video_id === video.id);
+    own.forEach(x => {
+      if (x.interaction_type === "like") score -= 55;
+      if (x.interaction_type === "comment") score -= 35;
+      if (x.interaction_type === "view") score -= 18;
+    });
+
+    scores.set(video.id, score);
+  });
+
+  return scores;
+}
+
+async function loadBeyondFeed(feedType = activeFeed) {
   activeFeed = feedType;
   updateFeedTabs();
   feed.innerHTML = '<p class="feed-loading">Loading Beyond...</p>';
@@ -29,7 +74,8 @@ async function recordInteraction(videoId, type) {\n  const user = await BeyondAu
   let query = supabaseClient
     .from("videos")
     .select("id, user_id, video_url, caption, created_at")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(100);
 
   if (feedType === "following") {
     if (!user) {
@@ -37,13 +83,13 @@ async function recordInteraction(videoId, type) {\n  const user = await BeyondAu
       return;
     }
 
-    const { data: follows, error } = await supabaseClient
+    const { data: follows, error: followError } = await supabaseClient
       .from("follows")
       .select("following_id")
       .eq("follower_id", user.id);
 
-    if (error) {
-      console.error(error);
+    if (followError) {
+      console.error(followError);
       feed.innerHTML = '<p class="feed-loading">Could not load Following.</p>';
       return;
     }
@@ -76,15 +122,33 @@ async function recordInteraction(videoId, type) {\n  const user = await BeyondAu
   const ids = videos.map(v => v.id);
   const userIds = [...new Set(videos.map(v => v.user_id).filter(Boolean))];
 
-  const [{ data: likes }, { data: comments }, { data: profiles }] = await Promise.all([
+  const [{ data: likes }, { data: comments }, { data: profiles }, { data: views }] = await Promise.all([
     supabaseClient.from("video_likes").select("video_id, user_id").in("video_id", ids),
     supabaseClient.from("video_comments").select("id, video_id, user_id, comment").in("video_id", ids).order("created_at", { ascending: false }),
-    supabaseClient.from("profiles").select("id, username, display_name, avatar_url").in("id", userIds)
+    supabaseClient.from("profiles").select("id, username, display_name, avatar_url").in("id", userIds),
+    supabaseClient.from("video_views").select("video_id").in("video_id", ids)
   ]);
+
+  const scoreMap = feedType === "forYou"
+    ? await getForYouScores(videos, user)
+    : new Map();
+
+  const likeCount = id => (likes || []).filter(x => x.video_id === id).length;
+  const commentCount = id => (comments || []).filter(x => x.video_id === id).length;
+  const viewCount = id => (views || []).filter(x => x.video_id === id).length;
+
+  const rankedVideos = [...videos].sort((a, b) => {
+    if (feedType === "forYou") {
+      const engagementA = likeCount(a.id) * 2 + commentCount(a.id) * 3 + Math.min(viewCount(a.id), 100) * 0.15;
+      const engagementB = likeCount(b.id) * 2 + commentCount(b.id) * 3 + Math.min(viewCount(b.id), 100) * 0.15;
+      return ((scoreMap.get(b.id) || 0) + engagementB) - ((scoreMap.get(a.id) || 0) + engagementA);
+    }
+    return new Date(b.created_at) - new Date(a.created_at);
+  });
 
   feed.replaceChildren();
 
-  videos.forEach(video => {
+  rankedVideos.forEach(video => {
     const videoLikes = likes?.filter(x => x.video_id === video.id) || [];
     const videoComments = comments?.filter(x => x.video_id === video.id) || [];
     const creator = profiles?.find(p => p.id === video.user_id);
@@ -133,6 +197,7 @@ async function recordInteraction(videoId, type) {\n  const user = await BeyondAu
         video_id: video.id,
         user_id: user?.id || null
       });
+      await recordInteraction(video.id, "view");
     }, { once: true });
 
     card.querySelector(".like-btn").addEventListener("click", async () => {
@@ -152,6 +217,7 @@ async function recordInteraction(videoId, type) {\n  const user = await BeyondAu
       } else {
         await supabaseClient.from("video_likes")
           .insert({ video_id: video.id, user_id: current.id });
+        await recordInteraction(video.id, "like");
       }
 
       await loadBeyondFeed(activeFeed);
@@ -188,7 +254,6 @@ async function recordInteraction(videoId, type) {\n  const user = await BeyondAu
     });
   }
 }
-
 function updateFeedTabs() {
   if (!forYouTab || !followingTab) return;
   const forYou = activeFeed === "forYou";
