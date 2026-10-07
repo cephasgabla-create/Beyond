@@ -168,3 +168,10 @@ body.comments-open{overflow:hidden}
 .notification-item strong{display:block;font-size:14px}
 .notification-item small{display:block;margin-top:5px;color:#8f8f9a}
 @media(max-width:650px){.notifications-panel{align-items:flex-end}.notifications-card{width:100%;height:78vh;border-left:0;border-top:1px solid #292932;border-radius:18px 18px 0 0}}
+
+.feed-tabs{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:35;display:flex;gap:4px;padding:4px;border-radius:999px;background:rgba(0,0,0,.48);backdrop-filter:blur(10px)}
+.feed-tab{border:0;border-radius:999px;padding:8px 15px;background:transparent;color:#aaa;font-weight:800;cursor:pointer}
+.feed-tab.active{background:#fff;color:#111}
+.feed-empty{min-height:100vh;display:grid;place-items:center;align-content:center;gap:8px;padding:100px 24px;text-align:center}
+.feed-empty h2{margin:0}.feed-empty p{margin:0 0 10px;color:#aaaab4}
+@media(max-width:650px){.feed-tabs{top:58px}.feed-tab{padding:7px 12px;font-size:13px}}
