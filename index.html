@@ -1,44 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Beyond • Short Videos</title>
-  <link rel="stylesheet" href="style.css">
-</head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Beyond • Short Videos</title><link rel="stylesheet" href="style.css"></head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="index.html">Beyond</a>
-    <nav class="nav-actions" aria-label="Beyond navigation">
-      <button id="openSearchBtn" class="nav-link search-link" type="button">🔍 Search</button>
-      <a class="nav-link" href="profile.html">Profile</a>
-      <a class="upload-link" href="upload.html">＋ Upload</a>
-    </nav>
-  </header>
-
-  <main id="feed" class="feed"></main>
-
-  <div id="searchOverlay" class="search-overlay" hidden>
-    <div class="search-panel">
-      <div class="search-panel-header">
-        <h2>Search Beyond</h2>
-        <button id="closeSearchBtn" class="close-search" type="button" aria-label="Close search">×</button>
-      </div>
-
-      <form id="homeSearchForm" class="home-search-form">
-        <input id="homeSearchInput" type="search" maxlength="30" placeholder="Search creators..." autocomplete="off">
-        <button type="submit">Search</button>
-      </form>
-
-      <p id="homeSearchStatus" class="status" aria-live="polite"></p>
-      <div id="homeSearchResults" class="creator-results"></div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
-  <script src="auth.js"></script>
-  <script src="feed.js"></script>
-  <script src="home-search.js"></script>
-</body>
-</html>
+<header class="topbar">
+<a class="brand" href="index.html">Beyond</a>
+<nav class="nav-actions" aria-label="Beyond navigation">
+<button id="openSearchBtn" class="nav-link search-link" type="button">🔍 Search</button>
+<a class="nav-link" href="profile.html">Profile</a>
+<a class="upload-link" href="upload.html">＋ Upload</a>
+</nav>
+</header>
+<main id="feed" class="feed"></main>
+<div id="searchOverlay" class="search-overlay" hidden>
+<div class="search-panel">
+<div class="search-panel-header"><h2>Search Beyond</h2><button id="closeSearchBtn" class="close-search" type="button">×</button></div>
+<form id="homeSearchForm" class="home-search-form"><input id="homeSearchInput" type="search" maxlength="30" placeholder="Search creators..." autocomplete="off"><button type="submit">Search</button></form>
+<p id="homeSearchStatus" class="status"></p><div id="homeSearchResults" class="creator-results"></div>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase.js"></script><script src="auth.js"></script><script src="feed.js"></script><script src="home-search.js"></script>
+</body></html>
