@@ -36,5 +36,5 @@
     <div id="notificationsList" class="notifications-list"></div>
   </div>
 </div>
-<script src="notifications.js"></script>
-</body></html>
+<script src="notifications.js"></script><script src="report.js"></script>
+<div id="reportOverlay" class="report-overlay" hidden><section class="report-panel"><header class="report-header"><div><h2>Report video</h2><p>Tell us what is wrong with this video.</p></div><button id="closeReportBtn" class="close-search" type="button">×</button></header><form id="reportForm" class="report-form"><label for="reportReason">Reason</label><select id="reportReason" required><option value="">Choose a reason</option><option value="spam">Spam</option><option value="harassment">Harassment</option><option value="copyright">Copyright</option><option value="unsafe">Unsafe content</option><option value="other">Other</option></select><textarea id="reportDetails" maxlength="500" placeholder="Optional details"></textarea><button class="primary" type="submit">Submit report</button><p id="reportStatus" class="status" aria-live="polite"></p></form></section></div></body></html>
