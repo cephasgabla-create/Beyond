@@ -10,6 +10,7 @@ const logoutBtn = document.getElementById("logoutBtn");
 const usernameInput = document.getElementById("usernameInput");
 const displayNameInput = document.getElementById("displayNameInput");
 const bioInput = document.getElementById("bioInput");
+const avatarInput = document.getElementById("avatarInput");
 const saveBtn = document.getElementById("saveProfileBtn");
 const status = document.getElementById("profileStatus");
 const followBtn = document.getElementById("followBtn");
@@ -17,10 +18,10 @@ const editSection = document.getElementById("editSection");
 
 let currentUser = null;
 let profileUserId = null;
+let currentAvatarUrl = null;
 
 (async () => {
   currentUser = await BeyondAuth.getCurrentUser();
-
   const requestedUser = new URLSearchParams(window.location.search).get("user");
 
   if (requestedUser) {
@@ -65,6 +66,7 @@ async function loadProfile() {
     return;
   }
 
+  currentAvatarUrl = profile.avatar_url || null;
   fillProfile(profile);
 
   const [{ count: followers }, { count: following }] = await Promise.all([
@@ -117,34 +119,18 @@ async function loadFollowState() {
     followBtn.disabled = true;
 
     if (data) {
-      const { error } = await supabaseClient
-        .from("follows")
+      await supabaseClient.from("follows")
         .delete()
         .eq("follower_id", currentUser.id)
         .eq("following_id", profileUserId);
-
-      if (!error) {
-        followBtn.textContent = "Follow";
-        followBtn.classList.remove("following");
-        await loadProfile();
-      }
     } else {
-      const { error } = await supabaseClient
-        .from("follows")
-        .insert({
-          follower_id: currentUser.id,
-          following_id: profileUserId
-        });
-
-      if (!error) {
-        followBtn.textContent = "Following";
-        followBtn.classList.add("following");
-        await loadProfile();
-      }
+      await supabaseClient.from("follows")
+        .insert({ follower_id: currentUser.id, following_id: profileUserId });
     }
 
-    followBtn.disabled = false;
+    await loadProfile();
     await loadFollowState();
+    followBtn.disabled = false;
   };
 }
 
@@ -187,6 +173,7 @@ saveBtn.addEventListener("click", async () => {
   const username = usernameInput.value.trim().toLowerCase();
   const displayName = displayNameInput.value.trim();
   const bio = bioInput.value.trim();
+  const image = avatarInput.files?.[0];
 
   if (!/^[a-z0-9_]{3,30}$/.test(username)) {
     status.textContent = "Username: 3–30 letters, numbers, or underscores.";
@@ -199,28 +186,67 @@ saveBtn.addEventListener("click", async () => {
   }
 
   saveBtn.disabled = true;
-  status.textContent = "Saving...";
 
-  const { error } = await supabaseClient
-    .from("profiles")
-    .upsert({
-      id: currentUser.id,
-      username,
-      display_name: displayName,
-      bio
-    }, { onConflict: "id" });
+  try {
+    let avatarUrl = currentAvatarUrl;
 
-  if (error) {
+    if (image) {
+      if (image.size > 5 * 1024 * 1024) {
+        throw new Error("Profile photo must be 5 MB or smaller.");
+      }
+
+      if (!["image/jpeg", "image/png", "image/webp"].includes(image.type)) {
+        throw new Error("Use JPG, PNG, or WebP.");
+      }
+
+      status.textContent = "Uploading profile photo...";
+
+      const extension = image.type === "image/jpeg" ? "jpg" : image.type.split("/")[1];
+      const storagePath = `${currentUser.id}/avatar.${extension}`;
+
+      const { error: uploadError } = await supabaseClient.storage
+        .from("avatars")
+        .upload(storagePath, image, {
+          cacheControl: "3600",
+          contentType: image.type,
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicData } = supabaseClient.storage
+        .from("avatars")
+        .getPublicUrl(storagePath);
+
+      avatarUrl = publicData.publicUrl + "?v=" + Date.now();
+    }
+
+    status.textContent = "Saving profile...";
+
+    const { error } = await supabaseClient
+      .from("profiles")
+      .upsert({
+        id: currentUser.id,
+        username,
+        display_name: displayName,
+        bio,
+        avatar_url: avatarUrl
+      }, { onConflict: "id" });
+
+    if (error) throw error;
+
+    currentAvatarUrl = avatarUrl;
+    avatarInput.value = "";
+    status.textContent = "Profile saved successfully!";
+    await loadProfile();
+  } catch (error) {
+    console.error(error);
     status.textContent = error.message.includes("profiles_username_key")
       ? "That username is already taken."
-      : error.message;
+      : error.message || "Could not save profile.";
+  } finally {
     saveBtn.disabled = false;
-    return;
   }
-
-  status.textContent = "Profile saved!";
-  await loadProfile();
-  saveBtn.disabled = false;
 });
 
 logoutBtn.addEventListener("click", async () => {
