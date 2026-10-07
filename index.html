@@ -9,13 +9,18 @@
 <body>
   <header class="topbar">
     <a class="brand" href="index.html">Beyond</a>
-    <a class="upload-link" href="upload.html">＋ Upload</a>
+
+    <nav class="nav-actions" aria-label="Beyond navigation">
+      <a class="nav-link" href="profile.html">Profile</a>
+      <a class="upload-link" href="upload.html">＋ Upload</a>
+    </nav>
   </header>
 
   <main id="feed" class="feed"></main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase.js"></script>
+  <script src="auth.js"></script>
   <script src="feed.js"></script>
 </body>
 </html>
