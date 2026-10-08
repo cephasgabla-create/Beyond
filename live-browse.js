@@ -126,8 +126,11 @@ function renderLiveBrowse(){
     const title=document.createElement("h2");
     title.textContent=room.title||"Beyond Live";
 
-    const creator=document.createElement("p");
+    const creator=document.createElement("a");
+    creator.className="live-browse-creator";
+    creator.href="profile.html?user="+encodeURIComponent(room.creator_id);
     creator.textContent="@"+(profile?.username||"creator");
+    creator.addEventListener("click",event=>event.stopPropagation());
 
     const join=document.createElement("span");
     join.className="live-browse-join";
