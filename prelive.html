@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go Live • Beyond</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="prelive-body">
+<header class="topbar">
+  <a class="brand" href="index.html">Beyond</a>
+  <nav class="nav-actions">
+    <a class="nav-link" href="index.html">Home</a>
+    <a class="nav-link" href="profile.html">Profile</a>
+  </nav>
+</header>
+
+<main class="prelive-page">
+  <section class="prelive-card">
+    <div class="prelive-header">
+      <div>
+        <p class="studio-kicker">BEYOND LIVE</p>
+        <h1>Get ready to go live</h1>
+        <p class="muted">Check your camera and microphone before starting your stream.</p>
+      </div>
+      <span class="prelive-status">PREVIEW</span>
+    </div>
+
+    <div class="prelive-grid">
+      <section class="prelive-preview">
+        <video id="previewVideo" autoplay playsinline muted></video>
+        <div id="previewPlaceholder" class="prelive-placeholder">
+          <strong>Beyond</strong>
+          <span>Camera preview</span>
+        </div>
+        <div class="prelive-preview-badges">
+          <span id="cameraState">📷 Camera off</span>
+          <span id="micState">🎙️ Mic off</span>
+        </div>
+      </section>
+
+      <section class="prelive-settings">
+        <label for="liveTitle">Live title</label>
+        <input id="liveTitle" maxlength="120" value="Beyond Live" placeholder="What are you going live about?">
+
+        <div class="device-check">
+          <div><span>Camera</span><strong id="cameraCheck">Not started</strong></div>
+          <button id="cameraBtn" type="button">Enable camera</button>
+        </div>
+
+        <div class="device-check">
+          <div><span>Microphone</span><strong id="micCheck">Not started</strong></div>
+          <button id="micBtn" type="button">Enable mic</button>
+        </div>
+
+        <div class="prelive-tips">
+          <strong>Before you start</strong>
+          <ul>
+            <li>Use a stable internet connection.</li>
+            <li>Make sure your camera view is ready.</li>
+            <li>Keep your microphone clear.</li>
+          </ul>
+        </div>
+
+        <button id="goLiveBtn" class="go-live-btn" type="button">🔴 Go Live</button>
+        <p id="preliveStatus" class="status" aria-live="polite"></p>
+      </section>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script src="auth.js"></script>
+<script src="prelive.js"></script>
+</body>
+</html>
