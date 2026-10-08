@@ -3,6 +3,7 @@ create table if not exists public.live_rooms (
   id uuid primary key default gen_random_uuid(),
   creator_id uuid not null references auth.users(id) on delete cascade,
   title text not null default 'Beyond Live' check (char_length(title) between 1 and 120),
+  category text not null default 'Chat' check (category in ('Gaming','Music','Sports','Chat','Education')),
   status text not null default 'live' check (status in ('live','ended')),
   started_at timestamptz not null default now(),
   ended_at timestamptz
@@ -63,6 +64,7 @@ create policy "Users can update their live presence" on public.live_viewers for 
 drop policy if exists "Users can leave live rooms" on public.live_viewers;
 create policy "Users can leave live rooms" on public.live_viewers for delete to authenticated using (auth.uid() = user_id);
 
+create index if not exists live_rooms_category_idx on public.live_rooms(category, started_at desc);
 create index if not exists live_rooms_status_idx on public.live_rooms(status, started_at desc);
 create index if not exists live_chat_room_idx on public.live_chat_messages(room_id, created_at);
 create index if not exists live_reactions_room_idx on public.live_reactions(room_id, created_at);
