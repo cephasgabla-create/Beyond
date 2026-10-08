@@ -1,3 +1,103 @@
+// Beyond Live WebRTC foundation
+const rtcPeers = new Map();
+let rtcChannel = null;
+const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+
+async function sendLiveSignal(roomId, senderId, receiverId, signalType, payload) {
+  const { error } = await supabaseClient.from("live_signals").insert({
+    room_id: roomId,
+    sender_id: senderId,
+    receiver_id: receiverId || null,
+    signal_type: signalType,
+    payload
+  });
+  if (error) console.error("Beyond WebRTC signal:", error);
+}
+
+function createPeerConnection(peerId, initiator) {
+  if (rtcPeers.has(peerId)) return rtcPeers.get(peerId);
+
+  const pc = new RTCPeerConnection(rtcConfig);
+  rtcPeers.set(peerId, pc);
+
+  if (localStream) {
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  }
+
+  pc.onicecandidate = event => {
+    if (event.candidate && room && user) {
+      sendLiveSignal(room.id, user.id, peerId, "ice", event.candidate.toJSON());
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (["failed", "closed", "disconnected"].includes(pc.connectionState)) {
+      pc.close();
+      rtcPeers.delete(peerId);
+    }
+  };
+
+  if (initiator) {
+    pc.createOffer()
+      .then(offer => pc.setLocalDescription(offer).then(() => offer))
+      .then(offer => sendLiveSignal(room.id, user.id, peerId, "offer", offer))
+      .catch(error => console.error("Beyond WebRTC offer:", error));
+  }
+
+  return pc;
+}
+
+async function handleLiveSignal(signal) {
+  if (!room || !user || signal.sender_id === user.id) return;
+
+  const pc = createPeerConnection(signal.sender_id, false);
+
+  if (signal.signal_type === "offer") {
+    await pc.setRemoteDescription(signal.payload);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await sendLiveSignal(room.id, user.id, signal.sender_id, "answer", answer);
+  } else if (signal.signal_type === "answer") {
+    await pc.setRemoteDescription(signal.payload);
+  } else if (signal.signal_type === "ice") {
+    try {
+      await pc.addIceCandidate(signal.payload);
+    } catch (error) {
+      console.warn("Beyond ICE candidate:", error);
+    }
+  }
+}
+
+function subscribeWebRTCSignals() {
+  rtcChannel = supabaseClient
+    .channel("live-webrtc-" + room.id)
+    .on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "live_signals",
+      filter: "room_id=eq." + room.id
+    }, payload => {
+      handleLiveSignal(payload.new);
+    })
+    .subscribe();
+}
+
+async function connectCreatorToViewer(viewerId) {
+  if (!room || room.creator_id !== user?.id || viewerId === user.id) return;
+  createPeerConnection(viewerId, true);
+}
+
+async function startCreatorBroadcast() {
+  if (!room || room.creator_id !== user?.id) return;
+  const { data: viewers } = await supabaseClient
+    .from("live_viewers")
+    .select("user_id")
+    .eq("room_id", room.id);
+
+  for (const viewer of viewers || []) {
+    await connectCreatorToViewer(viewer.user_id);
+  }
+}
 const params=new URLSearchParams(location.search);
 const liveVideo=document.getElementById("liveVideo");
 const cameraPlaceholder=document.getElementById("cameraPlaceholder");
