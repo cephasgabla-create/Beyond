@@ -1,6 +1,7 @@
 const previewVideo=document.getElementById("previewVideo");
 const previewPlaceholder=document.getElementById("previewPlaceholder");
 const liveTitle=document.getElementById("liveTitle");
+const liveCategory=document.getElementById("liveCategory");
 const cameraBtn=document.getElementById("cameraBtn");
 const micBtn=document.getElementById("micBtn");
 const cameraCheck=document.getElementById("cameraCheck");
@@ -84,6 +85,7 @@ goLiveBtn.addEventListener("click",async()=>{
   }
 
   const title=liveTitle.value.trim()||"Beyond Live";
+  const category=liveCategory.value||"Chat";
   if(!stream){
     const ready=await startPreview();
     if(!ready)return;
@@ -117,7 +119,7 @@ goLiveBtn.addEventListener("click",async()=>{
 
     const {data,error}=await supabaseClient
       .from("live_rooms")
-      .insert({creator_id:user.id,title,status:"live"})
+      .insert({creator_id:user.id,title,category,status:"live"})
       .select("id")
       .single();
 
@@ -125,6 +127,7 @@ goLiveBtn.addEventListener("click",async()=>{
 
     sessionStorage.setItem("beyondLivePreviewReady","true");
     sessionStorage.setItem("beyondLiveTitle",title);
+    sessionStorage.setItem("beyondLiveCategory",category);
 
     liveWindow.location.href="live-room.html?room="+encodeURIComponent(data.id);
 
