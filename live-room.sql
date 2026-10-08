@@ -67,3 +67,21 @@ create index if not exists live_rooms_status_idx on public.live_rooms(status, st
 create index if not exists live_chat_room_idx on public.live_chat_messages(room_id, created_at);
 create index if not exists live_reactions_room_idx on public.live_reactions(room_id, created_at);
 create index if not exists live_viewers_room_idx on public.live_viewers(room_id, last_seen_at);
+
+
+-- Enable Supabase Realtime for the live-room tables.
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='live_chat_messages') then
+    alter publication supabase_realtime add table public.live_chat_messages;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='live_reactions') then
+    alter publication supabase_realtime add table public.live_reactions;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='live_viewers') then
+    alter publication supabase_realtime add table public.live_viewers;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='live_rooms') then
+    alter publication supabase_realtime add table public.live_rooms;
+  end if;
+end $$;
