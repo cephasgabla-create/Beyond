@@ -85,3 +85,7 @@ begin
     alter publication supabase_realtime add table public.live_rooms;
   end if;
 end $$;
+
+create unique index if not exists live_one_active_room_per_creator_idx
+on public.live_rooms(creator_id)
+where status = 'live';
