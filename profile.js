@@ -349,6 +349,7 @@ async function loadAudienceInsights(days=7){
   renderAudienceChart(followerGrowthChart,daily.map(x=>({label:x.label,value:x.followers})),"followers");
   renderAudienceChart(audienceActivityChart,daily.map(x=>({label:x.label,value:x.activity})),"activity");
 }
+setTimeout(()=>{loadAudienceInsights(Number(document.querySelector(".range-btn.active")?.dataset.days||7));},0);
 function renderAudienceChart(el,data,label){if(!el)return;const max=Math.max(1,...data.map(x=>x.value));el.innerHTML=data.map(x=>'<div class="chart-row"><span>'+x.label+'</span><div class="chart-track"><i style="width:'+Math.min(100,x.value/max*100)+'%"></i></div><b>'+x.value+'</b></div>').join("");}
 
 const originalLoadCreatorStudio=loadCreatorStudio;
