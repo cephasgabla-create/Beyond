@@ -1,5 +1,6 @@
 // Beyond Live WebRTC foundation
 const rtcPeers = new Map();
+const pendingIce = new Map();
 let rtcChannel = null;
 const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -33,7 +34,7 @@ function createPeerConnection(peerId, initiator) {
   pc.ontrack = event => { if (viewerVideo && event.streams[0]) { viewerVideo.srcObject = event.streams[0]; viewerVideo.hidden = false; liveVideo.hidden = true; cameraPlaceholder.hidden = true; } };
 
   pc.onconnectionstatechange = () => {
-    if (["failed", "closed", "disconnected"].includes(pc.connectionState)) {
+    if (["failed", "closed"].includes(pc.connectionState)) {
       pc.close();
       rtcPeers.delete(peerId);
     }
@@ -61,12 +62,21 @@ async function handleLiveSignal(signal) {
 
   if (signal.signal_type === "offer") {
     await pc.setRemoteDescription(signal.payload);
+    const queued = pendingIce.get(signal.sender_id) || [];
+    for (const candidate of queued) { try { await pc.addIceCandidate(candidate); } catch (_) {} }
+    pendingIce.delete(signal.sender_id);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     await sendLiveSignal(room.id, user.id, signal.sender_id, "answer", answer);
   } else if (signal.signal_type === "answer") {
     await pc.setRemoteDescription(signal.payload);
   } else if (signal.signal_type === "ice") {
+    if (!pc.remoteDescription) {
+      const queue = pendingIce.get(signal.sender_id) || [];
+      queue.push(signal.payload);
+      pendingIce.set(signal.sender_id, queue);
+      return;
+    }
     try {
       await pc.addIceCandidate(signal.payload);
     } catch (error) {
