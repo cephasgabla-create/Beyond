@@ -230,3 +230,5 @@ body.comments-open{overflow:hidden}
 .prelive-settings select{width:100%;padding:13px;border:1px solid #34343e;border-radius:12px;background:#17171e;color:#fff;font:inherit}
 
 .live-search-wrap{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:0 14px;border:1px solid #292932;border-radius:14px;background:#111116;box-shadow:0 10px 30px rgba(0,0,0,.18)}.live-search-wrap span{font-size:23px;color:#aaaab4}.live-search-wrap input{width:100%;border:0;outline:0;background:transparent;color:#fff;padding:14px 0;font:inherit}.live-search-wrap input::placeholder{color:#777783}.live-search-meta{min-height:18px;margin:0 0 10px;color:#aaaab4;font-size:12px;font-weight:800}
+
+.live-browse-creator{display:block;color:#aaaab4;font-size:12px;text-decoration:none}.live-browse-creator:hover{color:#fff;text-decoration:underline}
