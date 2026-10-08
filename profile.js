@@ -314,6 +314,46 @@ function subscribeToStudioAnalytics(){
 }
 window.addEventListener("beforeunload",()=>{if(studioRealtimeChannel)supabaseClient.removeChannel(studioRealtimeChannel)});
 
+const audienceFollowers=document.getElementById("audienceFollowers");
+const audienceNewFollowers=document.getElementById("audienceNewFollowers");
+const audienceEngagement=document.getElementById("audienceEngagement");
+const audienceActiveDays=document.getElementById("audienceActiveDays");
+const followerGrowthChart=document.getElementById("followerGrowthChart");
+const audienceActivityChart=document.getElementById("audienceActivityChart");
+
+async function loadAudienceInsights(days=7){
+  if(!profileUserId || !audienceFollowers)return;
+  const since=new Date(); since.setHours(0,0,0,0); since.setDate(since.getDate()-days+1);
+  const [{data:follows=[]},{data:videos=[]}]=await Promise.all([
+    supabaseClient.from("follows").select("created_at").eq("following_id",profileUserId).order("created_at",{ascending:true}),
+    supabaseClient.from("videos").select("id").eq("user_id",profileUserId)
+  ]);
+  const ids=videos.map(v=>v.id);
+  const [{data:likes=[]},{data:comments=[]},{data:views=[]}]=await Promise.all([
+    ids.length?supabaseClient.from("video_likes").select("video_id,created_at").in("video_id",ids):Promise.resolve({data:[]}),
+    ids.length?supabaseClient.from("video_comments").select("video_id,created_at").in("video_id",ids):Promise.resolve({data:[]}),
+    ids.length?supabaseClient.from("video_views").select("video_id,viewed_at").in("video_id",ids):Promise.resolve({data:[]})
+  ]);
+  const totalFollowers=follows.length;
+  const newFollowers=follows.filter(x=>new Date(x.created_at)>=since).length;
+  const recentViews=views.filter(x=>new Date(x.viewed_at)>=since).length;
+  const recentLikes=likes.filter(x=>new Date(x.created_at)>=since).length;
+  const recentComments=comments.filter(x=>new Date(x.created_at)>=since).length;
+  const engagement=((recentLikes+recentComments)/Math.max(recentViews,1))*100;
+  audienceFollowers.textContent=totalFollowers;
+  audienceNewFollowers.textContent=newFollowers;
+  audienceEngagement.textContent=(Math.min(100,engagement)).toFixed(1)+"%";
+  const daily=[];
+  for(let i=days-1;i>=0;i--){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);const next=new Date(d);next.setDate(next.getDate()+1);daily.push({label:days<=7?d.toLocaleDateString(undefined,{weekday:"short"}):d.toLocaleDateString(undefined,{month:"short",day:"numeric"}),followers:follows.filter(x=>new Date(x.created_at)>=d&&new Date(x.created_at)<next).length,activity:views.filter(x=>new Date(x.viewed_at)>=d&&new Date(x.viewed_at)<next).length+likes.filter(x=>new Date(x.created_at)>=d&&new Date(x.created_at)<next).length+comments.filter(x=>new Date(x.created_at)>=d&&new Date(x.created_at)<next).length});}
+  audienceActiveDays.textContent=daily.filter(x=>x.activity>0).length;
+  renderAudienceChart(followerGrowthChart,daily.map(x=>({label:x.label,value:x.followers})),"followers");
+  renderAudienceChart(audienceActivityChart,daily.map(x=>({label:x.label,value:x.activity})),"activity");
+}
+function renderAudienceChart(el,data,label){if(!el)return;const max=Math.max(1,...data.map(x=>x.value));el.innerHTML=data.map(x=>'<div class="chart-row"><span>'+x.label+'</span><div class="chart-track"><i style="width:'+Math.min(100,x.value/max*100)+'%"></i></div><b>'+x.value+'</b></div>').join("");}
+
+const originalLoadCreatorStudio=loadCreatorStudio;
+loadCreatorStudio=async function(days=7){await originalLoadCreatorStudio(days);await loadAudienceInsights(days);};
+
 
 async function loadContentManager(){
   if(!contentList || !currentUser || profileUserId!==currentUser.id)return;
