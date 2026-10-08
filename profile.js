@@ -412,3 +412,43 @@ async function loadMonetization(days=7){
 }
 const originalAudienceLoad=loadAudienceInsights;
 loadAudienceInsights=async function(days=7){await originalAudienceLoad(days);await loadMonetization(days);};
+
+const liveViewers=document.getElementById("liveViewers"),liveLikes=document.getElementById("liveLikes"),liveComments=document.getElementById("liveComments"),peakViewers=document.getElementById("peakViewers"),liveEngagement=document.getElementById("liveEngagement"),liveViewsRecorded=document.getElementById("liveViewsRecorded"),liveStreamStatus=document.getElementById("liveStreamStatus"),liveStatusPill=document.getElementById("liveStatusPill"),livePerformanceChart=document.getElementById("livePerformanceChart"),liveDashboardStatus=document.getElementById("liveDashboardStatus");
+let liveSnapshot={viewers:0,likes:0,comments:0,peak:0};
+async function loadLiveDashboard(){
+  if(!profileUserId||!liveViewers)return;
+  const {data:videos=[]}=await supabaseClient.from("videos").select("id,created_at").eq("user_id",profileUserId).order("created_at",{ascending:false}).limit(100);
+  const ids=videos.map(v=>v.id); if(!ids.length){renderLiveStats([],[],[]);return;}
+  const since=new Date(); since.setHours(since.getHours()-24);
+  const [{data:views=[]},{data:likes=[]},{data:comments=[]}]=await Promise.all([
+    supabaseClient.from("video_views").select("video_id,user_id,viewed_at").in("video_id",ids).gte("viewed_at",since.toISOString()),
+    supabaseClient.from("video_likes").select("video_id,user_id,created_at").in("video_id",ids).gte("created_at",since.toISOString()),
+    supabaseClient.from("video_comments").select("video_id,user_id,created_at").in("video_id",ids).gte("created_at",since.toISOString())
+  ]);
+  renderLiveStats(views,likes,comments);
+}
+function renderLiveStats(views,likes,comments){
+  const now=Date.now(); const activeWindow=30*60*1000;
+  const activeUsers=new Set(views.filter(v=>now-new Date(v.viewed_at).getTime()<=activeWindow&&v.user_id).map(v=>v.user_id));
+  const anonymousRecent=views.filter(v=>now-new Date(v.viewed_at).getTime()<=activeWindow&&!v.user_id).length;
+  const viewers=activeUsers.size+anonymousRecent;
+  const recentLikes=likes.filter(x=>now-new Date(x.created_at).getTime()<=activeWindow).length;
+  const recentComments=comments.filter(x=>now-new Date(x.created_at).getTime()<=activeWindow).length;
+  liveSnapshot.viewers=viewers; liveSnapshot.likes=recentLikes; liveSnapshot.comments=recentComments; liveSnapshot.peak=Math.max(liveSnapshot.peak,viewers);
+  liveViewers.textContent=viewers; liveLikes.textContent=recentLikes; liveComments.textContent=recentComments; peakViewers.textContent=liveSnapshot.peak;
+  const engagement=((recentLikes+recentComments)/Math.max(viewers,1))*100; liveEngagement.textContent=Math.min(100,engagement).toFixed(1)+"%"; liveViewsRecorded.textContent=views.length.toLocaleString();
+  const online=viewers>0; liveStreamStatus.textContent=online?"Active audience":"No active viewers"; liveStatusPill.textContent=online?"LIVE":"Offline"; liveStatusPill.classList.toggle("live-on",online);
+  liveDashboardStatus.textContent=online?"Live audience activity detected in the last 30 minutes.":"Waiting for live audience activity.";
+  const points=[]; for(let i=11;i>=0;i--){const end=new Date(Date.now()-i*5*60*1000),start=new Date(end.getTime()-5*60*1000);const v=views.filter(x=>new Date(x.viewed_at)>=start&&new Date(x.viewed_at)<end).length;points.push({label:end.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}),value:v});}
+  const max=Math.max(1,...points.map(x=>x.value)); livePerformanceChart.innerHTML=points.map(x=>'<div class="chart-row"><span>'+x.label+'</span><div class="chart-track"><i style="width:'+Math.min(100,x.value/max*100)+'%"></i></div><b>'+x.value+'</b></div>').join("");
+}
+function subscribeToLiveDashboard(){
+  if(!liveViewers)return;
+  const channel=supabaseClient.channel("live-dashboard-"+profileUserId)
+    .on("postgres_changes",{event:"*",schema:"public",table:"video_views"},()=>loadLiveDashboard())
+    .on("postgres_changes",{event:"*",schema:"public",table:"video_likes"},()=>loadLiveDashboard())
+    .on("postgres_changes",{event:"*",schema:"public",table:"video_comments"},()=>loadLiveDashboard())
+    .subscribe();
+  window.addEventListener("beforeunload",()=>supabaseClient.removeChannel(channel),{once:true});
+}
+loadLiveDashboard(); subscribeToLiveDashboard();
