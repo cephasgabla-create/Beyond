@@ -2,6 +2,11 @@ const liveBrowseGrid=document.getElementById("liveBrowseGrid");
 const liveBrowseEmpty=document.getElementById("liveBrowseEmpty");
 const liveBrowseStatus=document.getElementById("liveBrowseStatus");
 const liveCategories=document.getElementById("liveCategories");
+const liveSearchInput=document.getElementById("liveSearchInput");
+const liveSearchMeta=document.getElementById("liveSearchMeta");
+let searchTerm="";
+let liveRoomsCache=[];
+let creatorProfilesCache=new Map();
 let selectedCategory="All";
 const categories=["All","🔥 Trending","🎮 Gaming","🎵 Music","⚽ Sports","💬 Chat","📚 Education"];
 
@@ -44,15 +49,35 @@ async function loadLiveBrowse(){
     return;
   }
 
+  liveRoomsCache=rooms||[];
+  await loadCreatorProfiles(liveRoomsCache);
+  renderLiveBrowse();
+}
+
+async function loadCreatorProfiles(rooms){
+  const ids=[...new Set(rooms.map(room=>room.creator_id).filter(Boolean))];
+  await Promise.all(ids.map(async id=>{
+    if(creatorProfilesCache.has(id))return;
+    const {data}=await supabaseClient.from("profiles").select("username,display_name,avatar_url").eq("id",id).maybeSingle();
+    creatorProfilesCache.set(id,data||{});
+  }));
+}
+
+function renderLiveBrowse(){
   liveBrowseGrid.replaceChildren();
   liveBrowseStatus.textContent="";
+  liveBrowseStatus.textContent="";
 
-  if(!rooms?.length){
+  const rooms=liveRoomsCache;
+  if(!rooms.length){
     liveBrowseEmpty.hidden=false;
     return;
   }
 
-  const filteredRooms=selectedCategory==="All" ? rooms : selectedCategory==="🔥 Trending" ? [...rooms].sort((a,b)=>new Date(b.started_at)-new Date(a.started_at)) : rooms.filter(room=>roomCategory(room)===selectedCategory);
+  const normalizedSearch=searchTerm.trim().toLowerCase();
+  let filteredRooms=selectedCategory==="All" ? [...rooms] : selectedCategory==="🔥 Trending" ? [...rooms].sort((a,b)=>new Date(b.started_at)-new Date(a.started_at)) : rooms.filter(room=>roomCategory(room)===selectedCategory);
+  if(normalizedSearch){filteredRooms=filteredRooms.filter(room=>{const profile=creatorProfilesCache.get(room.creator_id)||{};return [room.title,room.category,profile.username,profile.display_name].some(value=>String(value||"").toLowerCase().includes(normalizedSearch));});}
+  if(liveSearchMeta)liveSearchMeta.textContent=normalizedSearch ? `${filteredRooms.length} live stream${filteredRooms.length===1?"":"s"} found` : "";
 
   if(!filteredRooms.length){
     liveBrowseEmpty.hidden=false;
@@ -63,13 +88,9 @@ async function loadLiveBrowse(){
   liveBrowseEmpty.hidden=true;
 
   for(const room of filteredRooms){
-    const [profileResult,viewerResult]=await Promise.all([
-      supabaseClient.from("profiles").select("username,display_name,avatar_url").eq("id",room.creator_id).maybeSingle(),
-      supabaseClient.from("live_viewers").select("user_id",{count:"exact",head:true}).eq("room_id",room.id)
-    ]);
-
-    const profile=profileResult.data;
-    const viewers=viewerResult.count||0;
+    const profile=creatorProfilesCache.get(room.creator_id)||{};
+    const {count:viewersCount}=await supabaseClient.from("live_viewers").select("user_id",{count:"exact",head:true}).eq("room_id",room.id);
+    const viewers=viewersCount||0;
 
     const card=document.createElement("a");
     card.className="live-browse-card";
@@ -120,6 +141,8 @@ async function loadLiveBrowse(){
 
 renderCategories();
 loadLiveBrowse();
+
+liveSearchInput?.addEventListener("input",()=>{searchTerm=liveSearchInput.value;renderLiveBrowse();});
 
 const channel=supabaseClient.channel("beyond-live-directory")
   .on("postgres_changes",{event:"*",schema:"public",table:"live_rooms"},loadLiveBrowse)
