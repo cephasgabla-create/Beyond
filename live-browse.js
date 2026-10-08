@@ -19,6 +19,7 @@ function renderCategories(){
 }
 
 function roomCategory(room){
+  if(room.category)return room.category;
   const text=(room.title||"").toLowerCase();
   if(/gaming|game|minecraft|fortnite|roblox|fc\s?26|football game/.test(text))return "🎮 Gaming";
   if(/music|song|sing|dj|beat|afrobeats|concert/.test(text))return "🎵 Music";
@@ -32,7 +33,7 @@ function roomCategory(room){
 async function loadLiveBrowse(){
   const {data:rooms,error}=await supabaseClient
     .from("live_rooms")
-    .select("id,creator_id,title,started_at,status")
+    .select("id,creator_id,title,category,started_at,status")
     .eq("status","live")
     .order("started_at",{ascending:false})
     .limit(50);
