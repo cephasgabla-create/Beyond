@@ -387,3 +387,28 @@ async function loadContentManager(){
     contentList.appendChild(item);
   });
 }
+
+const estimatedEarnings=document.getElementById("estimatedEarnings"),eligibleViews=document.getElementById("eligibleViews"),estimatedRPM=document.getElementById("estimatedRPM"),monetizationFollowers=document.getElementById("monetizationFollowers"),earningsChart=document.getElementById("earningsChart");
+async function loadMonetization(days=7){
+  if(!profileUserId||!estimatedEarnings)return;
+  const since=new Date(); since.setHours(0,0,0,0); since.setDate(since.getDate()-days+1);
+  const {data:videos=[]}=await supabaseClient.from("videos").select("id").eq("user_id",profileUserId);
+  const ids=videos.map(v=>v.id);
+  const [{data:views=[]},{count:followers}]=await Promise.all([
+    ids.length?supabaseClient.from("video_views").select("viewed_at").in("video_id",ids).gte("viewed_at",since.toISOString()):Promise.resolve({data:[]}),
+    supabaseClient.from("follows").select("*",{count:"exact",head:true}).eq("following_id",profileUserId)
+  ]);
+  const rpm=0.50;
+  const eligible=views.length;
+  const earnings=eligible/1000*rpm;
+  estimatedEarnings.textContent="$"+earnings.toFixed(2);
+  eligibleViews.textContent=eligible.toLocaleString();
+  estimatedRPM.textContent="$"+rpm.toFixed(2);
+  monetizationFollowers.textContent=(followers||0).toLocaleString();
+  const daily=[];
+  for(let i=days-1;i>=0;i--){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);const next=new Date(d);next.setDate(next.getDate()+1);const v=views.filter(x=>new Date(x.viewed_at)>=d&&new Date(x.viewed_at)<next).length;daily.push({label:days<=7?d.toLocaleDateString(undefined,{weekday:"short"}):d.toLocaleDateString(undefined,{month:"short",day:"numeric"}),value:v/1000*rpm});}
+  const max=Math.max(0.01,...daily.map(x=>x.value));
+  earningsChart.innerHTML=daily.map(x=>'<div class="chart-row"><span>'+x.label+'</span><div class="chart-track"><i style="width:'+Math.min(100,x.value/max*100)+'%"></i></div><b>$'+x.value.toFixed(2)+'</b></div>').join("");
+}
+const originalAudienceLoad=loadAudienceInsights;
+loadAudienceInsights=async function(days=7){await originalAudienceLoad(days);await loadMonetization(days);};
