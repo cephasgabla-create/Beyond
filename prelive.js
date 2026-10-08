@@ -11,6 +11,7 @@ const goLiveBtn=document.getElementById("goLiveBtn");
 const preliveStatus=document.getElementById("preliveStatus");
 
 let stream=null;
+let streamHandedOff=false;
 
 (async()=>{
   const user=await BeyondAuth.requireAuth("login.html");
@@ -107,7 +108,68 @@ goLiveBtn.addEventListener("click",async()=>{
     sessionStorage.setItem("beyondLivePreviewReady","true");
     sessionStorage.setItem("beyondLiveTitle",title);
 
-    location.href="live-room.html?room="+encodeURIComponent(data.id);
+    // A MediaStream cannot survive a normal page navigation. Open the Live Room
+    // and transfer the actual preview stream to it instead of requesting it again.
+    const liveUrl="live-room.html?room="+encodeURIComponent(data.id);
+    const liveWindow=window.open(liveUrl,"BeyondLiveRoom");
+
+    if(!liveWindow){
+      preliveStatus.textContent="Your browser blocked the Live Room window. Allow pop-ups for Beyond and try again.";
+      goLiveBtn.disabled=false;
+      goLiveBtn.textContent="🔴 Go Live";
+      await supabaseClient.from("live_rooms").update({
+        status:"ended",
+        ended_at:new Date().toISOString()
+      }).eq("id",data.id).eq("creator_id",user.id);
+      return;
+    }
+
+    const message={
+      type:"beyond-live-stream",
+      roomId:data.id,
+      title,
+      stream
+    };
+
+    let acknowledged=false;
+    const acknowledge=event=>{
+      if(event.origin!==location.origin)return;
+      if(event.source!==liveWindow)return;
+      if(event.data?.type==="beyond-live-stream-received"&&event.data.roomId===data.id){
+        acknowledged=true;
+        streamHandedOff=true;
+        window.removeEventListener("message",acknowledge);
+        preliveStatus.textContent="You're live. The camera preview has been handed to your Live Room.";
+        goLiveBtn.textContent="Live Room Open";
+      }
+    };
+    window.addEventListener("message",acknowledge);
+
+    const sendStream=()=>{
+      if(acknowledged||liveWindow.closed)return;
+      try{
+        liveWindow.postMessage(message,location.origin,[stream]);
+      }catch(error){
+        console.error("Beyond stream handoff:",error);
+      }
+    };
+
+    sendStream();
+    const handoffTimer=setInterval(()=>{
+      if(acknowledged||liveWindow.closed){
+        clearInterval(handoffTimer);
+        return;
+      }
+      sendStream();
+    },300);
+
+    setTimeout(()=>{
+      clearInterval(handoffTimer);
+      window.removeEventListener("message",acknowledge);
+    },10000);
+
+    // Do not navigate this page: navigation would destroy the preview context.
+    // The Live Room is now using the transferred stream.
   }catch(error){
     console.error("Beyond Go Live:",error);
     preliveStatus.textContent=error.message||"Could not start your live room.";
@@ -117,5 +179,5 @@ goLiveBtn.addEventListener("click",async()=>{
 });
 
 window.addEventListener("beforeunload",()=>{
-  stream?.getTracks().forEach(track=>track.stop());
+  if(!streamHandedOff)stream?.getTracks().forEach(track=>track.stop());
 });
