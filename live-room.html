@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Live Room • Beyond</title><link rel="stylesheet" href="style.css"></head>
+<body class="live-room-body">
+<header class="topbar"><a class="brand" href="index.html">Beyond</a><nav class="nav-actions"><a class="nav-link" href="index.html">Home</a><a class="nav-link" href="profile.html">Profile</a></nav></header>
+<main class="live-room">
+<section class="live-stage"><div class="live-stage-top"><span id="roomStatus" class="live-badge">LIVE</span><span>👁 <strong id="viewerCount">0</strong></span></div><div class="live-placeholder"><div class="live-logo">Beyond</div><p id="roomTitle">Beyond Live</p><small id="creatorName"></small></div><div id="reactionFloat" class="reaction-float" aria-live="polite"></div></section>
+<aside class="live-sidebar"><div class="room-heading"><div><h1 id="roomHeading">Beyond Live</h1><p id="roomCreator">@creator</p></div><button id="endLiveBtn" class="end-live-btn" type="button" hidden>End Live</button></div>
+<div class="live-stats"><div><span>Viewers</span><strong id="sideViewerCount">0</strong></div><div><span>Reactions</span><strong id="reactionCount">0</strong></div></div>
+<div id="chatList" class="live-chat-list"></div>
+<form id="chatForm" class="live-chat-form"><input id="chatInput" maxlength="300" placeholder="Say something..." autocomplete="off"><button type="submit">Send</button></form>
+<div class="reaction-buttons"><button type="button" data-reaction="like">👍</button><button type="button" data-reaction="love">❤️</button><button type="button" data-reaction="fire">🔥</button><button type="button" data-reaction="wow">😮</button></div>
+<p id="liveRoomStatus" class="status" aria-live="polite"></p></aside></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase.js"></script><script src="auth.js"></script><script src="live-room.js"></script></body></html>
