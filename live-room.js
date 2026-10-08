@@ -127,6 +127,9 @@ const cameraPlaceholder=document.getElementById("cameraPlaceholder");
 const cameraBtn=document.getElementById("cameraBtn");
 const micBtn=document.getElementById("micBtn");
 const creatorControls=document.getElementById("creatorControls");
+const moderationPanel=document.getElementById("moderationPanel");
+const moderationList=document.getElementById("moderationList");
+const moderatedUsers=new Map();
 let localStream=null;
 async function enableCamera(){
   if(!navigator.mediaDevices?.getUserMedia){liveRoomStatus.textContent="Camera access is not supported by this browser.";return false}
@@ -148,11 +151,36 @@ const roomId=params.get("room");const liveStage=document.querySelector(".live-st
 (async()=>{user=await BeyondAuth.getCurrentUser();if(!user){location.href="login.html?next="+encodeURIComponent(location.pathname+location.search);return}if(roomId) await joinExistingRoom();else await startRoom();})();
 async function startRoom(){const title=prompt("Give your live stream a title","Beyond Live")?.trim()||"Beyond Live";const {data,error}=await supabaseClient.from("live_rooms").insert({creator_id:user.id,title,status:"live"}).select().single();if(error){liveRoomStatus.textContent=error.message||"Could not start live room.";return}history.replaceState(null,"","live-room.html?room="+data.id);room=data;endLiveBtn.hidden=false;await setupRoom()}
 async function joinExistingRoom(){const {data,error}=await supabaseClient.from("live_rooms").select("id,creator_id,title,status,started_at").eq("id",roomId).maybeSingle();if(error||!data){liveRoomStatus.textContent="Live room not found.";return}room=data;if(room.status!=="live"){roomStatus.textContent="ENDED";liveRoomStatus.textContent="This live stream has ended.";chatForm.querySelector("button").disabled=true;chatInput.disabled=true;return}await supabaseClient.from("live_viewers").upsert({room_id:room.id,user_id:user.id,last_seen_at:new Date().toISOString()});await setupRoom();if(room.creator_id!==user.id){sendLiveSignal(room.id,user.id,room.creator_id,"offer",{type:"viewer-ready"}).catch(()=>{});}}
-async function setupRoom(){subscribeWebRTCSignals();await supabaseClient.from("live_viewers").upsert({room_id:room.id,user_id:user.id,last_seen_at:new Date().toISOString()});roomTitle.textContent=room.title;roomHeading.textContent=room.title;const {data:p}=await supabaseClient.from("profiles").select("username,display_name").eq("id",room.creator_id).maybeSingle();const name=p?.display_name||"Beyond Creator";roomCreator.textContent="@"+(p?.username||"creator");creatorName.textContent=name;if(room.creator_id===user.id){endLiveBtn.hidden=false;creatorControls.hidden=false;await enableCamera();await startCreatorBroadcast();}await loadChat();await refreshStats();subscribeRealtime();setInterval(heartbeat,20000)}
+async function setupRoom(){subscribeWebRTCSignals();await supabaseClient.from("live_viewers").upsert({room_id:room.id,user_id:user.id,last_seen_at:new Date().toISOString()});roomTitle.textContent=room.title;roomHeading.textContent=room.title;const {data:p}=await supabaseClient.from("profiles").select("username,display_name").eq("id",room.creator_id).maybeSingle();const name=p?.display_name||"Beyond Creator";roomCreator.textContent="@"+(p?.username||"creator");creatorName.textContent=name;if(room.creator_id===user.id){endLiveBtn.hidden=false;creatorControls.hidden=false;await enableCamera();await startCreatorBroadcast();await loadModeration();}await loadChat();await refreshStats();subscribeRealtime();setInterval(heartbeat,20000)}
 async function heartbeat(){if(!room||!user)return;await supabaseClient.from("live_viewers").upsert({room_id:room.id,user_id:user.id,last_seen_at:new Date().toISOString()})}
 async function refreshStats(){const cutoff=new Date(Date.now()-45000).toISOString();const {data:viewers=[]}=await supabaseClient.from("live_viewers").select("user_id").eq("room_id",room.id).gte("last_seen_at",cutoff);const {count:reactions}=await supabaseClient.from("live_reactions").select("*",{count:"exact",head:true}).eq("room_id",room.id);viewerCount.textContent=viewers.length;sideViewerCount.textContent=viewers.length;reactionCount.textContent=reactions||0}
+async function loadModeration(){
+  if(!room || room.creator_id!==user?.id)return;
+  const {data}=await supabaseClient.from("live_moderation").select("user_id,action").eq("room_id",room.id);
+  moderatedUsers.clear();
+  for(const item of data||[])moderatedUsers.set(item.user_id,item.action);
+  moderationPanel.hidden=false;
+  renderModeration();
+}
+function renderModeration(){
+  if(!moderationList)return;
+  moderationList.replaceChildren();
+  if(!moderatedUsers.size){moderationList.innerHTML="<small>No moderated users.</small>";return}
+  for(const [userId,action] of moderatedUsers){
+    const row=document.createElement("div");row.className="moderation-user";
+    const label=document.createElement("span");label.textContent=userId.slice(0,8)+"… • "+action;
+    const btn=document.createElement("button");btn.textContent="Remove";btn.onclick=async()=>{await supabaseClient.from("live_moderation").delete().eq("room_id",room.id).eq("user_id",userId);moderatedUsers.delete(userId);renderModeration()};
+    row.append(label,btn);moderationList.appendChild(row);
+  }
+}
+async function moderateUser(userId,action){
+  if(!room||room.creator_id!==user.id||userId===user.id)return;
+  const {error}=await supabaseClient.from("live_moderation").upsert({room_id:room.id,user_id:userId,action},{onConflict:"room_id,user_id"});
+  if(error){liveRoomStatus.textContent=error.message;return}
+  moderatedUsers.set(userId,action);renderModeration();
+}
 async function loadChat(){const {data,error}=await supabaseClient.from("live_chat_messages").select("id,user_id,message,created_at").eq("room_id",room.id).order("created_at",{ascending:true}).limit(100);if(error){liveRoomStatus.textContent="Run live-room.sql in Supabase first.";return}chatList.replaceChildren();for(const item of data||[])addChat(item)}
-async function addChat(item){const row=document.createElement("article");row.className="live-chat-message";row.dataset.chatId=item.id;row.innerHTML='<strong>Beyond user</strong><p>'+escapeHTML(item.message)+'</p>';const {data:p}=await supabaseClient.from("profiles").select("username,display_name").eq("id",item.user_id).maybeSingle();if(p)row.querySelector("strong").textContent=p.display_name||("@"+p.username);chatList.appendChild(row);chatList.scrollTop=chatList.scrollHeight}
+async function addChat(item){const row=document.createElement("article");row.className="live-chat-message";row.dataset.chatId=item.id;row.innerHTML='<strong>Beyond user</strong><p>'+escapeHTML(item.message)+'</p>';const {data:p}=await supabaseClient.from("profiles").select("username,display_name").eq("id",item.user_id).maybeSingle();if(p){row.querySelector("strong").textContent=p.display_name||("@"+p.username);row.querySelector("strong").className="chat-user-name";row.querySelector("strong").title="Creator: click to moderate";row.querySelector("strong").onclick=()=>{if(room?.creator_id===user.id){const action=moderatedUsers.get(item.user_id)==="blocked"?"muted":"blocked";moderateUser(item.user_id,action)}}}chatList.appendChild(row);chatList.scrollTop=chatList.scrollHeight}
 chatForm.addEventListener("submit",async e=>{e.preventDefault();const message=chatInput.value.trim();if(!message||!room)return;chatInput.value="";const {error}=await supabaseClient.from("live_chat_messages").insert({room_id:room.id,user_id:user.id,message});if(error){chatInput.value=message;liveRoomStatus.textContent=error.message||"Could not send message.";}});
 document.querySelectorAll(".reaction-buttons button").forEach(btn=>btn.addEventListener("click",async()=>{if(!room)return;const reaction=btn.dataset.reaction;const {error}=await supabaseClient.from("live_reactions").insert({room_id:room.id,user_id:user.id,reaction});if(error){liveRoomStatus.textContent=error.message||"Could not send reaction.";return}showReaction(btn.textContent)}));
 function showReaction(value){reactionFloat.textContent=value;reactionFloat.classList.remove("pop");void reactionFloat.offsetWidth;reactionFloat.classList.add("pop")}
