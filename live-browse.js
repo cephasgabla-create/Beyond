@@ -7,8 +7,61 @@ const liveSearchMeta=document.getElementById("liveSearchMeta");
 let searchTerm="";
 let liveRoomsCache=[];
 let creatorProfilesCache=new Map();
+let followingCache=new Set();
+let currentUser=null;
 let selectedCategory="All";
 const categories=["All","🔥 Trending","🎮 Gaming","🎵 Music","⚽ Sports","💬 Chat","📚 Education"];
+
+async function loadCurrentUser(){
+  const {data}=await supabaseClient.auth.getUser();
+  currentUser=data?.user||null;
+}
+
+async function loadFollowing(creatorIds){
+  followingCache=new Set();
+  if(!currentUser||!creatorIds.length)return;
+  const {data,error}=await supabaseClient.from("follows").select("following_id").eq("follower_id",currentUser.id).in("following_id",creatorIds);
+  if(error){console.error("Beyond Live follows:",error);return;}
+  (data||[]).forEach(row=>followingCache.add(row.following_id));
+}
+
+function updateFollowButton(button,creatorId){
+  const following=followingCache.has(creatorId);
+  button.textContent=following?"Following":"Follow";
+  button.classList.toggle("is-following",following);
+  button.setAttribute("aria-pressed",following?"true":"false");
+}
+
+async function toggleFollow(creatorId,button){
+  if(!currentUser){window.location.href="login.html?next=live.html";return;}
+  if(!creatorId||creatorId===currentUser.id)return;
+  button.disabled=true;
+  try{
+    if(followingCache.has(creatorId)){
+      const {error}=await supabaseClient.from("follows").delete().eq("follower_id",currentUser.id).eq("following_id",creatorId);
+      if(error)throw error;
+      followingCache.delete(creatorId);
+    }else{
+      const {error}=await supabaseClient.from("follows").insert({follower_id:currentUser.id,following_id:creatorId});
+      if(error)throw error;
+      followingCache.add(creatorId);
+    }
+    updateFollowButton(button,creatorId);
+  }catch(error){
+    console.error("Beyond follow creator:",error);
+    liveBrowseStatus.textContent=error.message||"Could not update follow.";
+  }finally{button.disabled=false;}
+}
+
+function createFollowButton(creatorId){
+  const button=document.createElement("button");
+  button.type="button";
+  button.className="live-browse-follow";
+  updateFollowButton(button,creatorId);
+  if(!currentUser||creatorId===currentUser.id)button.hidden=true;
+  else button.addEventListener("click",event=>{event.stopPropagation();toggleFollow(creatorId,button);});
+  return button;
+}
 
 function renderCategories(){
   if(!liveCategories)return;
@@ -18,7 +71,8 @@ function renderCategories(){
     button.type="button";
     button.className="live-category"+(category===selectedCategory?" active":"");
     button.textContent=category;
-    button.addEventListener("click",()=>{selectedCategory=category;renderCategories();loadLiveBrowse();});
+    button.addEventListener("click",()=>{selectedCategory=category;async function init(){renderCategories();await loadCurrentUser();await loadLiveBrowse();}
+init();});
     liveCategories.appendChild(button);
   });
 }
@@ -51,6 +105,7 @@ async function loadLiveBrowse(){
 
   liveRoomsCache=rooms||[];
   await loadCreatorProfiles(liveRoomsCache);
+  await loadFollowing([...new Set(liveRoomsCache.map(room=>room.creator_id).filter(Boolean))]);
   renderLiveBrowse();
 }
 
@@ -92,9 +147,13 @@ function renderLiveBrowse(){
     const {count:viewersCount}=await supabaseClient.from("live_viewers").select("user_id",{count:"exact",head:true}).eq("room_id",room.id);
     const viewers=viewersCount||0;
 
-    const card=document.createElement("a");
+    const card=document.createElement("article");
     card.className="live-browse-card";
-    card.href="live-room.html?room="+encodeURIComponent(room.id);
+    card.tabIndex=0;
+    card.setAttribute("role","link");
+    const openRoom=()=>{window.location.href="live-room.html?room="+encodeURIComponent(room.id);};
+    card.addEventListener("click",openRoom);
+    card.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();openRoom();}});
 
     const visual=document.createElement("div");
     visual.className="live-browse-visual";
@@ -126,17 +185,21 @@ function renderLiveBrowse(){
     const title=document.createElement("h2");
     title.textContent=room.title||"Beyond Live";
 
+    const creatorRow=document.createElement("div");
+    creatorRow.className="live-browse-creator-row";
     const creator=document.createElement("a");
-    creator.className="live-browse-creator";
+    creator.className="live-browse-profile";
     creator.href="profile.html?user="+encodeURIComponent(room.creator_id);
     creator.textContent="@"+(profile?.username||"creator");
     creator.addEventListener("click",event=>event.stopPropagation());
+    const followButton=createFollowButton(room.creator_id);
+    creatorRow.append(creator,followButton);
 
     const join=document.createElement("span");
     join.className="live-browse-join";
     join.textContent="Join Live →";
 
-    body.append(title,creator,join);
+    body.append(title,creatorRow,join);
     card.append(visual,body);
     liveBrowseGrid.appendChild(card);
   }
