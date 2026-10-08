@@ -131,15 +131,50 @@ const moderationPanel=document.getElementById("moderationPanel");
 const moderationList=document.getElementById("moderationList");
 const moderatedUsers=new Map();
 let localStream=null;
+let transferredStream=null;
+let transferredRoomId=null;
+let streamTransferWaiters=[];
+
+window.addEventListener("message",event=>{
+  if(event.origin!==location.origin)return;
+  const data=event.data||{};
+  if(data.type!=="beyond-live-stream"||!data.stream||!data.roomId)return;
+  if(roomId&&data.roomId!==roomId)return;
+  transferredStream=data.stream;
+  transferredRoomId=data.roomId;
+  event.source?.postMessage({type:"beyond-live-stream-received",roomId:data.roomId},event.origin);
+  for(const resolve of streamTransferWaiters)resolve(transferredStream);
+  streamTransferWaiters=[];
+});
+
+function waitForTransferredStream(timeout=5000){
+  if(transferredStream)return Promise.resolve(transferredStream);
+  return new Promise(resolve=>{
+    let settled=false;
+    const finish=stream=>{if(settled)return;settled=true;clearTimeout(timer);resolve(stream)};
+    streamTransferWaiters.push(finish);
+    const timer=setTimeout(()=>finish(null),timeout);
+  });
+}
+
+function useLocalStream(stream){
+  localStream=stream;
+  liveVideo.srcObject=localStream;
+  liveVideo.muted=true;
+  liveVideo.hidden=false;
+  cameraPlaceholder.hidden=true;
+  cameraBtn.textContent="📷 Camera on";
+  const micTrack=localStream.getAudioTracks()[0];
+  micBtn.textContent=micTrack?.enabled?"🎙️ Mic on":"🔇 Mic off";
+  return true;
+}
 async function enableCamera(){
+  if(transferredStream&&(!transferredRoomId||transferredRoomId===room?.id)){
+    return useLocalStream(transferredStream);
+  }
   if(!navigator.mediaDevices?.getUserMedia){liveRoomStatus.textContent="Camera access is not supported by this browser.";return false}
   try{
-    localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-    liveVideo.srcObject=localStream;
-    liveVideo.muted=true;
-    liveVideo.hidden=false;
-    cameraPlaceholder.hidden=true;
-    cameraBtn.textContent="📷 Camera on";
+    useLocalStream(await navigator.mediaDevices.getUserMedia({video:true,audio:true}));
     return true;
   }catch(error){
     console.error("Beyond camera:",error);
@@ -151,7 +186,19 @@ const roomId=params.get("room");const liveStage=document.querySelector(".live-st
 (async()=>{user=await BeyondAuth.getCurrentUser();if(!user){location.href="login.html?next="+encodeURIComponent(location.pathname+location.search);return}if(roomId) await joinExistingRoom();else await startRoom();})();
 async function startRoom(){const title=prompt("Give your live stream a title","Beyond Live")?.trim()||"Beyond Live";const {data,error}=await supabaseClient.from("live_rooms").insert({creator_id:user.id,title,status:"live"}).select().single();if(error){liveRoomStatus.textContent=error.message||"Could not start live room.";return}history.replaceState(null,"","live-room.html?room="+data.id);room=data;endLiveBtn.hidden=false;await setupRoom()}
 async function joinExistingRoom(){const {data,error}=await supabaseClient.from("live_rooms").select("id,creator_id,title,status,started_at").eq("id",roomId).maybeSingle();if(error||!data){liveRoomStatus.textContent="Live room not found.";return}room=data;if(room.status!=="live"){roomStatus.textContent="ENDED";liveRoomStatus.textContent="This live stream has ended.";chatForm.querySelector("button").disabled=true;chatInput.disabled=true;return}await supabaseClient.from("live_viewers").upsert({room_id:room.id,user_id:user.id,last_seen_at:new Date().toISOString()});await setupRoom();if(room.creator_id!==user.id){sendLiveSignal(room.id,user.id,room.creator_id,"offer",{type:"viewer-ready"}).catch(()=>{});}}
-async function setupRoom(){subscribeWebRTCSignals();await supabaseClient.from("live_viewers").upsert({room_id:room.id,user_id:user.id,last_seen_at:new Date().toISOString()});roomTitle.textContent=room.title;roomHeading.textContent=room.title;const {data:p}=await supabaseClient.from("profiles").select("username,display_name").eq("id",room.creator_id).maybeSingle();const name=p?.display_name||"Beyond Creator";roomCreator.textContent="@"+(p?.username||"creator");creatorName.textContent=name;if(room.creator_id===user.id){endLiveBtn.hidden=false;creatorControls.hidden=false;await enableCamera();await startCreatorBroadcast();await loadModeration();}await loadChat();await refreshStats();subscribeRealtime();setInterval(heartbeat,20000)}
+async function setupRoom(){subscribeWebRTCSignals();await supabaseClient.from("live_viewers").upsert({room_id:room.id,user_id:user.id,last_seen_at:new Date().toISOString()});roomTitle.textContent=room.title;roomHeading.textContent=room.title;const {data:p}=await supabaseClient.from("profiles").select("username,display_name").eq("id",room.creator_id).maybeSingle();const name=p?.display_name||"Beyond Creator";roomCreator.textContent="@"+(p?.username||"creator");creatorName.textContent=name;if(room.creator_id===user.id){
+  endLiveBtn.hidden=false;
+  creatorControls.hidden=false;
+  const handedOff=await waitForTransferredStream(6000);
+  if(handedOff&&transferredRoomId===room.id){
+    useLocalStream(handedOff);
+    liveRoomStatus.textContent="Camera and microphone transferred from the waiting room.";
+  }else{
+    await enableCamera();
+  }
+  await startCreatorBroadcast();
+  await loadModeration();
+}await loadChat();await refreshStats();subscribeRealtime();setInterval(heartbeat,20000)}
 async function heartbeat(){if(!room||!user)return;await supabaseClient.from("live_viewers").upsert({room_id:room.id,user_id:user.id,last_seen_at:new Date().toISOString()})}
 async function refreshStats(){const cutoff=new Date(Date.now()-45000).toISOString();const {data:viewers=[]}=await supabaseClient.from("live_viewers").select("user_id").eq("room_id",room.id).gte("last_seen_at",cutoff);const {count:reactions}=await supabaseClient.from("live_reactions").select("*",{count:"exact",head:true}).eq("room_id",room.id);viewerCount.textContent=viewers.length;sideViewerCount.textContent=viewers.length;reactionCount.textContent=reactions||0}
 async function loadModeration(){
