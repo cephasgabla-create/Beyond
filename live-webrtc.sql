@@ -18,9 +18,19 @@ using (
   sender_id = auth.uid()
   or receiver_id = auth.uid()
   or exists (
-    select 1 from public.live_rooms r
+    select 1
+    from public.live_rooms r
     where r.id = room_id
       and r.status = 'live'
+      and (
+        r.creator_id = auth.uid()
+        or exists (
+          select 1
+          from public.live_viewers v
+          where v.room_id = r.id
+            and v.user_id = auth.uid()
+        )
+      )
   )
 );
 
