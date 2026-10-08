@@ -54,6 +54,11 @@ async function handleLiveSignal(signal) {
 
   const pc = createPeerConnection(signal.sender_id, false);
 
+  if (signal.signal_type === "offer" && signal.payload?.type === "viewer-ready") {
+    if (room.creator_id === user.id) await connectCreatorToViewer(signal.sender_id);
+    return;
+  }
+
   if (signal.signal_type === "offer") {
     await pc.setRemoteDescription(signal.payload);
     const answer = await pc.createAnswer();
