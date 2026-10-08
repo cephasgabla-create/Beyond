@@ -16,6 +16,7 @@
   <button id="forYouTab" class="feed-tab active" type="button" role="tab" aria-selected="true">For You</button>
   <button id="followingTab" class="feed-tab" type="button" role="tab" aria-selected="false">Following</button>
 </div>
+<section id="liveNowSection" class="live-now" hidden aria-label="Beyond Live now"><div class="live-now-header"><div><span class="live-now-kicker">BEYOND LIVE</span><h2>Live now</h2></div><a href="discover.html" class="live-now-link">Discover</a></div><div id="liveNowList" class="live-now-list"></div></section>
 <main id="feed" class="feed"></main>
 <div id="commentsOverlay" class="comments-overlay" hidden>
 <section class="comments-panel" aria-label="Comments">
@@ -29,7 +30,7 @@
 <form id="homeSearchForm" class="home-search-form"><input id="homeSearchInput" type="search" maxlength="30" placeholder="Search creators..." autocomplete="off"><button type="submit">Search</button></form>
 <p id="homeSearchStatus" class="status"></p><div id="homeSearchResults" class="creator-results"></div>
 </div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase.js"></script><script src="auth.js"></script><script src="feed.js"></script><script src="home-search.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase.js"></script><script src="live-now.js"></script><script src="auth.js"></script><script src="feed.js"></script><script src="home-search.js"></script>
 <div id="notificationsPanel" class="notifications-panel" hidden>
   <div class="notifications-card">
     <header class="notifications-header"><h2>Notifications</h2><button id="closeNotificationsBtn" class="close-search" type="button">×</button></header>
