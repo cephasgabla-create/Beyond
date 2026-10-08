@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live • Beyond</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="beyond-live-page">
+<header class="topbar">
+  <a class="brand" href="index.html">Beyond</a>
+  <nav class="nav-actions">
+    <a class="nav-link" href="index.html">Home</a>
+    <a class="nav-link" href="discover.html">Discover</a>
+    <a class="upload-link" href="upload.html">＋ Upload</a>
+  </nav>
+</header>
+<main class="live-discover-page">
+  <section class="live-discover-hero">
+    <div>
+      <span class="live-now-kicker">BEYOND LIVE</span>
+      <h1>Live now</h1>
+      <p>Watch creators who are streaming right now.</p>
+    </div>
+    <a class="go-live-small" href="prelive.html">🔴 Go Live</a>
+  </section>
+  <div id="liveBrowseGrid" class="live-browse-grid"></div>
+  <div id="liveBrowseEmpty" class="live-browse-empty" hidden>
+    <div>📡</div>
+    <h2>No one is live right now</h2>
+    <p>Start your own Beyond Live or check back soon.</p>
+    <a href="prelive.html">Start a Live</a>
+  </div>
+  <p id="liveBrowseStatus" class="status" aria-live="polite"></p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script src="live-browse.js"></script>
+</body>
+</html>
