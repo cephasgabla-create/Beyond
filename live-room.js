@@ -53,12 +53,12 @@ function createPeerConnection(peerId, initiator) {
 async function handleLiveSignal(signal) {
   if (!room || !user || signal.sender_id === user.id) return;
 
-  const pc = createPeerConnection(signal.sender_id, false);
-
   if (signal.signal_type === "offer" && signal.payload?.type === "viewer-ready") {
     if (room.creator_id === user.id) await connectCreatorToViewer(signal.sender_id);
     return;
   }
+
+  const pc = createPeerConnection(signal.sender_id, false);
 
   if (signal.signal_type === "offer") {
     await pc.setRemoteDescription(signal.payload);
@@ -101,6 +101,11 @@ function subscribeWebRTCSignals() {
 
 async function connectCreatorToViewer(viewerId) {
   if (!room || room.creator_id !== user?.id || viewerId === user.id) return;
+  const existing = rtcPeers.get(viewerId);
+  if (existing) {
+    existing.close();
+    rtcPeers.delete(viewerId);
+  }
   createPeerConnection(viewerId, true);
 }
 
