@@ -45,6 +45,28 @@
       </div>
     </section>
 
+    <section id="creator-studio" class="creator-studio">
+      <div class="studio-heading">
+        <div><p class="studio-kicker">CREATOR STUDIO</p><h2>Analytics</h2><p class="muted">Track how your Beyond content is performing.</p></div>
+        <div class="range-switcher"><button class="range-btn active" data-days="7" type="button">7D</button><button class="range-btn" data-days="30" type="button">30D</button><button class="range-btn" data-days="90" type="button">90D</button></div>
+      </div>
+      <div class="analytics-grid">
+        <div class="analytics-card"><span>Views</span><strong id="studioViews">0</strong></div><div class="analytics-card"><span>Likes</span><strong id="studioLikes">0</strong></div><div class="analytics-card"><span>Comments</span><strong id="studioComments">0</strong></div><div class="analytics-card"><span>Followers</span><strong id="studioFollowers">0</strong></div>
+      </div>
+      <div class="analytics-panel"><h3>Performance</h3><div id="performanceChart" class="performance-chart"></div><div id="topVideos" class="top-videos"></div></div>
+    </section>
+    <section id="audience-studio" class="creator-studio">
+      <div class="studio-heading"><div><p class="studio-kicker">AUDIENCE</p><h2>Audience insights</h2><p class="muted">See follower growth and when your audience is most active.</p></div></div>
+      <div class="analytics-grid">
+        <div class="analytics-card"><span>Total followers</span><strong id="audienceFollowers">0</strong></div><div class="analytics-card"><span>New followers</span><strong id="audienceNewFollowers">0</strong></div><div class="analytics-card"><span>Engagement rate</span><strong id="audienceEngagement">0%</strong></div><div class="analytics-card"><span>Active days</span><strong id="audienceActiveDays">0</strong></div>
+      </div>
+      <div class="analytics-panel"><h3>Follower growth</h3><div id="followerGrowthChart" class="performance-chart"></div></div>
+      <div class="analytics-panel"><h3>Audience activity</h3><div id="audienceActivityChart" class="performance-chart"></div></div>
+    </section>
+    <section id="content-manager" class="content-manager">
+      <div class="studio-heading"><div><p class="studio-kicker">CONTENT MANAGER</p><h2>Your videos</h2><p class="muted">Edit captions or remove videos from Beyond.</p></div></div>
+      <div id="contentList" class="content-list"><p class="muted">Loading content...</p></div>
+    </section>
     <section>
       <h2>Videos</h2>
       <div id="myVideos" class="profile-grid">
