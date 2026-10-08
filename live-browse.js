@@ -1,6 +1,33 @@
 const liveBrowseGrid=document.getElementById("liveBrowseGrid");
 const liveBrowseEmpty=document.getElementById("liveBrowseEmpty");
 const liveBrowseStatus=document.getElementById("liveBrowseStatus");
+const liveCategories=document.getElementById("liveCategories");
+let selectedCategory="All";
+const categories=["All","🔥 Trending","🎮 Gaming","🎵 Music","⚽ Sports","💬 Chat","📚 Education"];
+
+function renderCategories(){
+  if(!liveCategories)return;
+  liveCategories.replaceChildren();
+  categories.forEach(category=>{
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="live-category"+(category===selectedCategory?" active":"");
+    button.textContent=category;
+    button.addEventListener("click",()=>{selectedCategory=category;renderCategories();loadLiveBrowse();});
+    liveCategories.appendChild(button);
+  });
+}
+
+function roomCategory(room){
+  const text=(room.title||"").toLowerCase();
+  if(/gaming|game|minecraft|fortnite|roblox|fc\s?26|football game/.test(text))return "🎮 Gaming";
+  if(/music|song|sing|dj|beat|afrobeats|concert/.test(text))return "🎵 Music";
+  if(/sport|football|soccer|basketball|real madrid|ghana|match/.test(text))return "⚽ Sports";
+  if(/learn|school|class|education|study|code|coding|tutorial/.test(text))return "📚 Education";
+  if(/chat|talk|q&a|question|talking/.test(text))return "💬 Chat";
+  return "💬 Chat";
+}
+
 
 async function loadLiveBrowse(){
   const {data:rooms,error}=await supabaseClient
@@ -24,9 +51,17 @@ async function loadLiveBrowse(){
     return;
   }
 
+  const filteredRooms=selectedCategory==="All" ? rooms : selectedCategory==="🔥 Trending" ? [...rooms].sort((a,b)=>new Date(b.started_at)-new Date(a.started_at)) : rooms.filter(room=>roomCategory(room)===selectedCategory);
+
+  if(!filteredRooms.length){
+    liveBrowseEmpty.hidden=false;
+    liveBrowseEmpty.querySelector("h2").textContent="No live streams in this category";
+    return;
+  }
+
   liveBrowseEmpty.hidden=true;
 
-  for(const room of rooms){
+  for(const room of filteredRooms){
     const [profileResult,viewerResult]=await Promise.all([
       supabaseClient.from("profiles").select("username,display_name,avatar_url").eq("id",room.creator_id).maybeSingle(),
       supabaseClient.from("live_viewers").select("user_id",{count:"exact",head:true}).eq("room_id",room.id)
@@ -82,6 +117,7 @@ async function loadLiveBrowse(){
   }
 }
 
+renderCategories();
 loadLiveBrowse();
 
 const channel=supabaseClient.channel("beyond-live-directory")
